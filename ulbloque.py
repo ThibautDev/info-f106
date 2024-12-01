@@ -2,6 +2,13 @@ from sys import argv
 from getkey import getkey
 
 def parse_game(game_file_path: str) -> dict: # Fonction 1
+    '''
+    Depuis un nom de ficher de sauvegarde donné,
+    retourne une dictionnaire dans la configuration de:
+    - La taille de la grilles
+    - Les positions des voitures
+    - Le nombre maximal de coup
+    '''
     with open(game_file_path, encoding="utf-8") as info_file:
         info_file_lst = [line for line in info_file]
 
@@ -24,6 +31,12 @@ def parse_game(game_file_path: str) -> dict: # Fonction 1
     }
 
 def new_car_infos(parking, x, y):
+    '''
+    Depuis une matrice du parking et des positions x et y,
+    détermine l'orientation de la voiture à ces coordonnées
+    et ajoute les infos pour qu'elle puisse être jouter dans 
+    le tableau des voitures
+    '''
     orientation = None
 
     if x + 1 < len(parking[y]) and parking[y][x] == parking[y][x + 1]:
@@ -36,8 +49,11 @@ def new_car_infos(parking, x, y):
 
 def get_game_str(game: dict, current_move_number: int) -> str: # Fonction 2
     game_matrix = [
-        ["." for _ in range(game['width'])] for _ in range(game['height'])
+        [
+            "." for _ in range(game['width'])
+        ] for _ in range(game['height'])
     ]
+
     color_index = 7
 
     for car_position, car in enumerate(game['cars']):
@@ -169,22 +185,26 @@ def used_coords(game):
     return(used_coords)
 
 def is_win(game: dict) -> bool: # Fonction 4
-    return bool(game['cars'][0][0][0] + game['cars'][0][2] == game['width'])
+    return bool(
+        game['cars'][0][0][0] + game['cars'][0][2] == game['width']
+    )
 
 def play_game(game: dict) -> int: # Fonction 5
     moves_remains = game['max_moves']
-    car_to_move, move = None, None
+    car_to_move, move = 0, None
 
     while not is_win(game) and moves_remains:
         print(get_game_str(game, moves_remains))
 
-        while not(car_to_move and move):
+        while not move:
             user_input = getkey()
 
             if len(user_input) == 1:
                 if (
                     ord('A') + ord(user_input) >= 0 
-                    and ord(user_input) - ord('A') + 1 <= len(game['cars'])
+                    and (
+                        ord(user_input) - ord('A') + 1
+                    ) <= len(game['cars'])
                 ) :
                     car_to_move = ord(user_input) - ord('A')
 
@@ -194,14 +214,15 @@ def play_game(game: dict) -> int: # Fonction 5
             elif user_input == 'ESCAPE':
                 return 2
 
-        move_car(game, car_to_move, move)
+        if move_car(game, car_to_move, move):
+            moves_remains -= 1
+
         move = None
-        moves_remains -= 1
+
 
     if is_win(game):
         return 0
-    
-    if not moves_remains:
+    else:
         return 1
 
 if __name__ == '__main__':
