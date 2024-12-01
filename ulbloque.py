@@ -2,14 +2,6 @@ from sys import argv
 from getkey import getkey
 
 def parse_game(game_file_path: str) -> dict: # Fonction 1
-    """Analyse le fichier contenant les infos de la partie contenues 
-    à l'emplacement game_file_path.
-    Retourne un dictionnaire contenant :
-    * la longueur du parking ('width')
-    * la largeur du parking ('height')
-    * une liste de la position initiale de toutes les voitures ('cars')
-    * le nombre de coups maximal pour gagner la partie ('max_moves')"""
-
     with open(game_file_path, encoding="utf-8") as info_file:
         info_file_lst = [line for line in info_file]
 
@@ -32,23 +24,17 @@ def parse_game(game_file_path: str) -> dict: # Fonction 1
     }
 
 def new_car_infos(parking, x, y):
-    """Check si la voiture aux coordonnées x, y est à l'orientale 
-    ou la verticale puis retourne les infos de bases 
-    pour une voiture de longueur 1"""
-    if x != len(parking[y]) - 1:
-        if parking[y][x] == parking[y][x + 1]:
-          orientation = 'h'
+    orientation = None
 
-    if y != len(parking) - 1:
-        if parking[y][x] == parking[y + 1][x]:
-            orientation = 'v'
+    if x + 1 < len(parking[y]) and parking[y][x] == parking[y][x + 1]:
+        orientation = 'h'
+
+    if y + 1 < len(parking) and parking[y][x] == parking[y + 1][x]:
+        orientation = 'v'
 
     return [(x, y), orientation, 1]
 
 def get_game_str(game: dict, current_move_number: int) -> str: # Fonction 2
-    """Retourne le texte correspondant à l'affichage du plateau de jeu (contenu dans le dictionnaire game en entrée)
-    et ajoute le nombre de mouvements déjà effectué (contenu dans l'entier current_move_number)."""
-
     game_matrix = [
         ["." for _ in range(game['width'])] for _ in range(game['height'])
     ]
@@ -88,10 +74,6 @@ def get_car_coords(car):
     return car_coords
 
 def move_car(game: dict, car_index: int, direction: str) -> bool: # Fonction 3
-    """Vérifie si la voiture peut être déplacé dans la direction souhaiter.
-    Si oui, modifier le dictionnaire game et retourne True,
-    si non, ne rien modifier et retourne False."""
-
     direction_function_dict = {
         'UP': move_UP,
         'DOWN': move_DOWN,
@@ -178,7 +160,6 @@ def move_RIGHT(game: dict, car_index: int):
 
 
 def used_coords(game):
-    """Donne la liste des cases occupées par des voitures"""
     used_coords = []
 
     for car in game['cars']:
@@ -191,10 +172,6 @@ def is_win(game: dict) -> bool: # Fonction 4
     return bool(game['cars'][0][0][0] + game['cars'][0][2] == game['width'])
 
 def play_game(game: dict) -> int: # Fonction 5
-    """Cette fonction prendra en compte toutes les instructions de la partie, sauf l'initiation.
-    Si le joueur a gagné, retourne 0,
-    si le joueur a perdu, retourne 1,
-    si le joueur a perdu, retourne 2."""
     moves_remains = game['max_moves']
     car_to_move, move = None, None
 
