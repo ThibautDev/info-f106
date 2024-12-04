@@ -91,7 +91,7 @@ def get_game_str(game: dict, move_number: int) -> str: # Fonction 2
 
     return (
         frame + 
-        '\nMoves remains: ' + str(move_number) + 
+        '\nMove number: ' + str(move_number) + 
         '\nMax moves: ' + str(game['max_moves'])
     )
 
@@ -143,8 +143,7 @@ def move_UP(game: dict, car_index: int):
         and game['cars'][car_index][0][1] != 0
         and (game['cars'][car_index][0][1] - 1, game['cars'][car_index][0][0]) not in used_coords(game)
     ):
-        # Modifie la valeut de la voitures dans le dictionnaire
-        # en décrémentant y de 1
+        # Modifie la valeut de la voitures dans le dictionnaire en décrémentant y de 1
         game['cars'][car_index][0] = (game['cars'][car_index][0][0], game['cars'][car_index][0][1] - 1)
         return True
     else:
@@ -163,8 +162,7 @@ def move_DOWN(game: dict, car_index: int):
         and (game['cars'][car_index][0][1] + game['cars'][car_index][2], 
              game['cars'][car_index][0][0]) not in used_coords(game)
     ): 
-        # Modifie la valeut de la voitures dans le dictionnaire
-        # en incrémentant y de 1
+        # Modifie la valeut de la voitures dans le dictionnaire en incrémentant y de 1
         game['cars'][car_index][0] = (game['cars'][car_index][0][0], game['cars'][car_index][0][1] + 1)
         return True
     else:
@@ -182,8 +180,7 @@ def move_LEFT(game: dict, car_index: int):
         and game['cars'][car_index][0][0]!= 0 
         and (game['cars'][car_index][0][1], game['cars'][car_index][0][0] - 1) not in used_coords(game)
     ):
-        # Modifie la valeut de la voitures dans le dictionnaire
-        # en décrémentant x de 1
+        # Modifie la valeut de la voitures dans le dictionnaire en décrémentant x de 1
         game['cars'][car_index][0] = (game['cars'][car_index][0][0] - 1, game['cars'][car_index][0][1])
         return True
     else:
@@ -202,8 +199,7 @@ def move_RIGHT(game: dict, car_index: int):
         and (game['cars'][car_index][0][1], 
              game['cars'][car_index][0][0] + game['cars'][car_index][2]) not in used_coords(game)
     ):
-        # Modifie la valeut de la voitures dans le dictionnaire
-        # en incrémentant x de 1
+        # Modifie la valeut de la voitures dans le dictionnaire en incrémentant x de 1
         game['cars'][car_index][0] = (game['cars'][car_index][0][0] + 1, game['cars'][car_index][0][1])
         return True
     else:
