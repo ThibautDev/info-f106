@@ -59,7 +59,7 @@ def new_car_infos(parking, x, y):
 
     return [(x, y), orientation, 1]
 
-def get_game_str(game: dict, current_move_number: int) -> str: # Fonction 2
+def get_game_str(game: dict, move_number: int) -> str: # Fonction 2
     '''
     Depuis un dictionnaire initié par la fonction parse_game,
     retourne un text qui peut être affiché au joueur 
@@ -67,9 +67,7 @@ def get_game_str(game: dict, current_move_number: int) -> str: # Fonction 2
     '''
 
     # Initie une matrice de bonne taille vide
-    game_matrix = [
-        [ "." for _ in range(game['width']) ] for _ in range(game['height'])
-    ]
+    game_matrix = [[ "." for _ in range(game['width']) ] for _ in range(game['height']) ]
 
     color_index = 7
 
@@ -93,7 +91,7 @@ def get_game_str(game: dict, current_move_number: int) -> str: # Fonction 2
 
     return (
         frame + 
-        '\nMoves remains: ' + str(current_move_number) + 
+        '\nMoves remains: ' + str(move_number) + 
         '\nMax moves: ' + str(game['max_moves'])
     )
 
@@ -143,17 +141,11 @@ def move_UP(game: dict, car_index: int):
     if (
         game['cars'][car_index][1] == 'v'
         and game['cars'][car_index][0][1] != 0
-        and (
-            game['cars'][car_index][0][1] - 1, 
-            game['cars'][car_index][0][0]
-        ) not in used_coords(game)
+        and (game['cars'][car_index][0][1] - 1, game['cars'][car_index][0][0]) not in used_coords(game)
     ):
         # Modifie la valeut de la voitures dans le dictionnaire
         # en décrémentant y de 1
-        game['cars'][car_index][0] = (
-            game['cars'][car_index][0][0], 
-            game['cars'][car_index][0][1] - 1
-        )
+        game['cars'][car_index][0] = (game['cars'][car_index][0][0], game['cars'][car_index][0][1] - 1)
         return True
     else:
         return False
@@ -167,21 +159,13 @@ def move_DOWN(game: dict, car_index: int):
     # Vérifie que le mouvement DOWN est possible
     if (
         game['cars'][car_index][1] == 'v'
-        and (
-            game['cars'][car_index][0][1] + 
-            game['cars'][car_index][2]
-        ) != game['height'] 
-        and (
-            game['cars'][car_index][0][1] + game['cars'][car_index][2], 
-            game['cars'][car_index][0][0]
-        ) not in used_coords(game)
+        and (game['cars'][car_index][0][1] + game['cars'][car_index][2]) != game['height'] 
+        and (game['cars'][car_index][0][1] + game['cars'][car_index][2], 
+             game['cars'][car_index][0][0]) not in used_coords(game)
     ): 
         # Modifie la valeut de la voitures dans le dictionnaire
         # en incrémentant y de 1
-        game['cars'][car_index][0] = (
-                game['cars'][car_index][0][0], 
-                game['cars'][car_index][0][1] + 1
-        )
+        game['cars'][car_index][0] = (game['cars'][car_index][0][0], game['cars'][car_index][0][1] + 1)
         return True
     else:
         return False
@@ -196,17 +180,11 @@ def move_LEFT(game: dict, car_index: int):
     if (
         game['cars'][car_index][1] == 'h'
         and game['cars'][car_index][0][0]!= 0 
-        and (
-            game['cars'][car_index][0][1], 
-            game['cars'][car_index][0][0] - 1
-        ) not in used_coords(game)
+        and (game['cars'][car_index][0][1], game['cars'][car_index][0][0] - 1) not in used_coords(game)
     ):
         # Modifie la valeut de la voitures dans le dictionnaire
         # en décrémentant x de 1
-        game['cars'][car_index][0] = (
-            game['cars'][car_index][0][0] - 1, 
-            game['cars'][car_index][0][1]
-        )
+        game['cars'][car_index][0] = (game['cars'][car_index][0][0] - 1, game['cars'][car_index][0][1])
         return True
     else:
         return False
@@ -220,21 +198,13 @@ def move_RIGHT(game: dict, car_index: int):
     # Vérifie que le mouvement RIGHT est possible
     if (
         game['cars'][car_index][1] == 'h'
-        and (
-            game['cars'][car_index][0][0] + 
-            game['cars'][car_index][2]
-        ) != game['width'] 
-        and (
-            game['cars'][car_index][0][1], 
-            game['cars'][car_index][0][0] + game['cars'][car_index][2]
-        ) not in used_coords(game)
+        and (game['cars'][car_index][0][0] + game['cars'][car_index][2]) != game['width'] 
+        and (game['cars'][car_index][0][1], 
+             game['cars'][car_index][0][0] + game['cars'][car_index][2]) not in used_coords(game)
     ):
         # Modifie la valeut de la voitures dans le dictionnaire
         # en incrémentant x de 1
-        game['cars'][car_index][0] = (
-            game['cars'][car_index][0][0] + 1, 
-            game['cars'][car_index][0][1]
-        )
+        game['cars'][car_index][0] = (game['cars'][car_index][0][0] + 1, game['cars'][car_index][0][1])
         return True
     else:
         return False
@@ -254,9 +224,7 @@ def is_win(game: dict) -> bool: # Fonction 4
     '''Retourne l'état de la partie'''
 
     # Verifie si la voiture A est sur la dernière case de sa ligne
-    return bool(
-        game['cars'][0][0][0] + game['cars'][0][2] == game['width']
-    )
+    return bool(game['cars'][0][0][0] + game['cars'][0][2] == game['width'])
 
 def play_game(game: dict) -> int: # Fonction 5
     '''
@@ -266,27 +234,22 @@ def play_game(game: dict) -> int: # Fonction 5
     Retourne 1 si partie perdue par manque de mouvement
     Retourne 2 si partie abandonné par le joueur
     '''
-    moves_remains = game['max_moves']
+    moves_number = 0
     car_to_move, move = 0, None
 
-    while not is_win(game) and moves_remains:
-        print(get_game_str(game, moves_remains))
+    while not is_win(game) and moves_number < game['max_moves']:
+        print(get_game_str(game, moves_number))
 
         # Tant que le joueur n'a pas entré d'input de mouvement valide
         while not move:
             user_input = getkey()
 
-            # Vérifie si le joueur veut entrer l'ID d'une des voiture
+            # Vérifie si le joueur veut entrer l'ID d'une des voiture et si elle est correcte
             if len(user_input) == 1:
-                if (
-                    ord('A') + ord(user_input) >= 0 
-                    and (
-                        ord(user_input) - ord('A') + 1
-                    ) <= len(game['cars'])
-                ) :
+                if (ord('A') + ord(user_input) >= 0 and (ord(user_input) - ord('A') + 1) <= len(game['cars'])) :
                     car_to_move = ord(user_input) - ord('A')
             
-            # Verifie si le joueur veut entrer une instruction de mouvement
+            # Verifie si le joueur veut entrer une instruction de mouvement correcte
             elif(user_input in ('UP', 'DOWN', 'LEFT', 'RIGHT')):
                 move = user_input
             
@@ -295,7 +258,7 @@ def play_game(game: dict) -> int: # Fonction 5
                 return 2
 
         if move_car(game, car_to_move, move):
-            moves_remains -= 1
+            moves_number += 1
 
         move = None
 
