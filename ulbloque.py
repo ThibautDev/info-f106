@@ -1,3 +1,9 @@
+'''
+Nom:       PROPS 
+Prénom :   Thibaut 
+Matricule: 000604917
+'''
+
 from sys import argv
 from getkey import getkey
 
@@ -67,7 +73,10 @@ def get_game_str(game: dict, move_number: int) -> str: # Fonction 2
     '''
 
     # Initie une matrice de bonne taille vide
-    game_matrix = [[ "." for _ in range(game['width']) ] for _ in range(game['height']) ]
+    game_matrix = [[ " . " for _ in range(game['width']) ] for _ in range(game['height']) ]
+
+    # Placer une fleche à l'endroit où la voiture A doit aller
+    game_matrix[game['cars'][0][0][1]][game['width'] - 1] = ' \u2B62 '
 
     color_index = 7
 
@@ -75,9 +84,9 @@ def get_game_str(game: dict, move_number: int) -> str: # Fonction 2
     for car_position, car in enumerate(game['cars']):
         for coord in get_car_coords(car):
             game_matrix[coord[0]][coord[1]] = (
-                    '\u001b[4' + str(color_index) + 'm' 
+                    '\u001b[4' + str(color_index) + 'm ' #Début couleur
                     + str(chr(ord('A') + car_position)) 
-                    + '\u001b[0m'
+                    + ' \u001b[0m' #Fin couleur
                 )
 
         color_index += 1
@@ -244,6 +253,8 @@ def play_game(game: dict) -> int: # Fonction 5
             if len(user_input) == 1:
                 if (ord('A') + ord(user_input) >= 0 and (ord(user_input) - ord('A') + 1) <= len(game['cars'])) :
                     car_to_move = ord(user_input) - ord('A')
+                else:
+                    print('Voiture', user_input, 'inexistante. Veuillez enter un ID de voiture convenable \nAttention: la sélection des voitures est sensible à la casse')
             
             # Verifie si le joueur veut entrer une instruction de mouvement correcte
             elif(user_input in ('UP', 'DOWN', 'LEFT', 'RIGHT')):
