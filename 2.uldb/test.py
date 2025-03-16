@@ -129,7 +129,7 @@ def test_create_table():
     assert data[84:88] == bytearray(4)  # current size
     assert data[88:96] == b'\xff' * 8  # first and last
 
-def test_create_table_alreay_exists():
+def test_create_table_already_exists():
     db = get_programme_db()
     from database import FieldType
     with pytest.raises(ValueError):
@@ -144,12 +144,6 @@ def test_get_signature_non_existing_table():
     db = get_empty_db('programme')
     with pytest.raises(ValueError):
         db.get_table_signature('COURS')
-
-def test_create_table_twice():
-    db = get_db('data')
-    db.create_table('table')
-    with pytest.raises(ValueError):
-        db.create_table('table')
 
 def test_delete_table():
     db = get_programme_db()
