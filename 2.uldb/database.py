@@ -102,44 +102,123 @@ class Database:
         posEntryBufferPointer = tableFile.current_pos
         entryBufferPointer = tableFile.read_integer(4)
 
+        # Shift the right amont of bytes to fit news strings
+        shift = 0
+
         while entryBufferPointer - nextUsablePlacePointer < newStringSpace:
             currentSpace = entryBufferPointer - stringBufferPointer
+            shift += currentSpace
             tableFile.shift_from(entryBufferPointer, currentSpace)
             entryBufferPointer += currentSpace
 
+        # Update pointer of entry buffer by the shift amont 
         tableFile.write_integer_to(entryBufferPointer, 4, posEntryBufferPointer)
 
+        # Write new strings to the string buffer
         stringPointers = []
         tableFile.goto(nextUsablePlacePointer)
         for info in stringsToWrite:
             stringPointers.append(tableFile.current_pos)
             tableFile.write_string(info)
 
+        # Update pointer of the next usable space on the string buffer
         tableFile.write_integer_to(tableFile.current_pos, 4, posNextUsablePlacePointer)
 
+        # Update number of entry and last ID used
         entryID = tableFile.read_integer_from(4, entryBufferPointer + 4) + 1
         tableFile.write_integer_to(entryID, 4, entryBufferPointer)
         tableFile.write_integer(entryID, 4)
 
-        firstElemPointerPos = tableFile.current_pos
-        firstElemPointer = tableFile.read_integer(4)
-        lastElemPointer = tableFile.read_integer(4)
+        # Get pos and value of entry buffer header pointers
+        posFirstEntryBufferPointer = tableFile.current_pos
+        firstEntryBufferPointer = tableFile.read_integer(4)
 
-        if firstElemPointer < 0:
-            firstElemPointer = tableFile.get_size()
-            lastElemPointer = firstElemPointer
-            tableFile.write_integer_to(firstElemPointer, 4, firstElemPointerPos)
-            tableFile.write_integer(lastElemPointer, 4)
+        posLastEntryBufferPointer = tableFile.current_pos
+        lastEntryBufferPointer = tableFile.read_integer(4)
 
-            tableFile.write_integer_to(entryID, 4, lastElemPointer)
+        tableFile.read_integer(4) # This space'll be useful later
 
-            stringIndex = 0
-            for info in entry:
-                if isinstance(entry[info], str):
-                    tableFile.write_integer(stringPointers[stringIndex], 4)
-                    stringIndex += 1
+        if firstEntryBufferPointer < 0:
+            # Set the entry buffer pointer for the first time. Both pointer point to the first and only entry
+            firstEntryPointer = tableFile.current_pos
+            tableFile.write_integer_to(firstEntryPointer, 4, posFirstEntryBufferPointer)
+            tableFile.write_integer_to(firstEntryPointer, 4, posLastEntryBufferPointer)
+        else:
+            # Update first entry because of the shift and set last entry to the end of the file
+            tableFile.write_integer_to(firstEntryBufferPointer + shift, 4, posFirstEntryBufferPointer)
+            tableFile.write_integer_to(tableFile.get_size(), 4, posLastEntryBufferPointer)
+            tableFile.write_integer_to(tableFile.get_size(), 4, tableFile.get_size() - 4)
+
+        tableFile.write_integer_to(entryID, 4, tableFile.get_size())
+
+        # Write int or reference of string to the string buffer
+        stringIndex = 0
+        for info in entry:
+            if isinstance(entry[info], str):
+                tableFile.write_integer(stringPointers[stringIndex], 4)
+                stringIndex += 1
+            else:
+                tableFile.write_integer(entry[info], 4)
+
+        if entryID == 1:
+            tableFile.write_integer(-1, 4) # Write that there are no entry before the first one
+        else:
+            tableFile.write_integer(lastEntryBufferPointer + shift, 4)
+
+        
+        tableFile.write_integer(-1, 4) # Write that there are no entry after the last one 
+
+    def get_complete_table(self, table_name: str) -> list[Entry]:
+        tableFile = self.open_table(table_name, 'r')
+
+        # Travel the header
+        nColumn = tableFile.read_integer_from(4, 4)
+        for _ in range(nColumn):
+            tableFile.read_integer(1)
+            tableFile.read_string()
+
+        posEntryBuffer = tableFile.read_integer_from(4, tableFile.current_pos + 8)
+        tableFile.read_integer_from(4, posEntryBuffer + 4)
+
+        tableFile.goto(tableFile.read_integer(4))
+        
+        completeTable = []
+        nextEntryPointer = 0
+        
+        while nextEntryPointer >= 0:
+            currentEntry = {}
+
+            currentEntry['id'] = tableFile.read_integer(4)
+
+            for cell in self.get_table_signature(table_name):
+                if cell[1] == FieldType.INTEGER:
+                    currentEntry[cell[0]] = tableFile.read_integer(4)
                 else:
-                    tableFile.write_integer(entry[info], 4)
+                    stringPointer = tableFile.read_integer(4)
+                    currentPos = tableFile.current_pos
+                    currentEntry[cell[0]] = tableFile.read_string_from(stringPointer)
+                    tableFile.goto(currentPos)
+
+            nextEntryPointer = tableFile.read_integer_from(4, tableFile.current_pos + 4)
+            completeTable.append(currentEntry)
+        return completeTable
+    
+    def get_entry(self, table_name: str, field_name: str, field_value: Field) -> Entry | None:
+        tableFile = self.open_table(table_name, 'r')
+        
+        # Get index of the fieldName
+        fieldNameIndex = None
+        
+        nColumn = tableFile.read_integer_from(4, 4)
+        for columnIndex in range(nColumn):
+            tableFile.read_integer(1)
+            if tableFile.read_string() == field_name:
+                fieldNameIndex = columnIndex
+
+        if fieldNameIndex == None:
+            return None
+        else:
+            print(hex(tableFile.current_pos))
 
     def get_table_size(self, table_name: str) -> int:
         tableFile = self.open_table(table_name, 'r')
@@ -149,12 +228,34 @@ class Database:
             tableFile.read_integer(1)
             tableFile.read_string()
 
-        tableFile.read_integer(4)
-        tableFile.read_integer_from(4, tableFile.read_integer(4))
-        return tableFile.read_integer(4)
+        pointerNbEntry = tableFile.read_integer_from(4, tableFile.current_pos + 8) + 4
+        return tableFile.read_integer_from(4, pointerNbEntry)
     
-    def update_entries(self, table_str: str, cond_name: str, cond_value: Field, update_name: str, update_value: Field) -> bool:
-        raise ValueError
-    
-    def delete_entries(self, table_name: str, field_name: str, field_value: Field) -> bool:
-        raise ValueError
+COURSES = [
+    {'MNEMONIQUE': 101, 'NOM': 'Programmation',
+     'COORDINATEUR': 'Thierry Massart', 'CREDITS': 10},
+    {'MNEMONIQUE': 102, 'NOM': 'Fonctionnement des ordinateurs',
+     'COORDINATEUR': 'Gilles Geeraerts', 'CREDITS': 5},
+    # {'MNEMONIQUE': 103, 'NOM': 'Algorithmique I',
+    #  'COORDINATEUR': 'Olivier Markowitch', 'CREDITS': 10},
+    # {'MNEMONIQUE': 105, 'NOM': 'Langages de programmation I',
+    #  'COORDINATEUR': 'Christophe Petit', 'CREDITS': 5},
+    # {'MNEMONIQUE': 106, 'NOM': 'Projet d\'informatique I',
+    #  'COORDINATEUR': 'Gwenaël Joret', 'CREDITS': 5},
+]
+
+db = Database('programme')
+db.create_table(
+    'cours',
+    ('MNEMONIQUE', FieldType.INTEGER),
+    ('NOM', FieldType.STRING),
+    ('COORDINATEUR', FieldType.STRING),
+    ('CREDITS', FieldType.INTEGER)
+)
+db.add_entry('cours', COURSES[0])
+db.add_entry('cours', COURSES[1])
+# db.add_entry('cours', COURSES[2])
+# db.add_entry('cours', COURSES[3])
+# db.add_entry('cours', COURSES[4])
+
+db.get_entry('cours', 'NOM', 101)
