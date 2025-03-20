@@ -11,8 +11,6 @@ Field = str | int
 Entry = dict[str, Field]
 
 class Database:
-    SIZE_OF_INT = 4
-
     def __init__(self, name: str):
         self.name = name # Initialize name 
         makedirs(name, exist_ok=True) # Create database directory and not raise error if the directory already exist
@@ -207,18 +205,93 @@ class Database:
         tableFile = self.open_table(table_name, 'r')
         
         # Get index of the fieldName
-        fieldNameIndex = None
+        fieldIndex = None
         
         nColumn = tableFile.read_integer_from(4, 4)
-        for columnIndex in range(nColumn):
-            tableFile.read_integer(1)
-            if tableFile.read_string() == field_name:
-                fieldNameIndex = columnIndex
 
-        if fieldNameIndex == None:
+        for columnIndex in range(nColumn):
+            currentFieldType = tableFile.read_integer(1)
+            if tableFile.read_string() == field_name:
+                fieldIndex = columnIndex
+                fieldType = currentFieldType
+
+        if fieldIndex == None:
             return None
         else:
-            print(hex(tableFile.current_pos))
+            entryBufferPointer = tableFile.read_integer_from(4, tableFile.current_pos + 8)
+            nextEntryPointer = tableFile.read_integer_from(4, entryBufferPointer + 8)
+            tableFile.goto(nextEntryPointer)
+
+            while nextEntryPointer > 0:
+                fieldPointer = tableFile.current_pos + 4 * (fieldIndex + 1)
+                fieldToTry = tableFile.read_integer_from(4, fieldPointer)
+                
+                if fieldType == 2:
+                    fieldToTry = tableFile.read_string_from(fieldToTry)
+
+                if fieldToTry == field_value:
+                    return self.read_entry(table_name, nextEntryPointer)
+
+                nextEntryPointerPos = fieldPointer + 4 * (nColumn - fieldIndex) + 4 # Get post of next entry pointer next to the previous entry pointer
+                nextEntryPointer = tableFile.read_integer_from(4, nextEntryPointerPos) # Read next entry pointer by skipping last entry pointer
+
+            return None
+        
+    def get_entries(self, table_name: str, field_name: str, field_value: Field) -> list[Entry]:
+        tableFile = self.open_table(table_name, 'r')
+        
+        # Get index of the fieldName
+        fieldIndex = None
+        
+        nColumn = tableFile.read_integer_from(4, 4)
+
+        for columnIndex in range(nColumn):
+            currentFieldType = tableFile.read_integer(1)
+            if tableFile.read_string() == field_name:
+                fieldIndex = columnIndex
+                fieldType = currentFieldType
+
+        if fieldIndex == None:
+            return []
+        else:
+            data = []
+
+            entryBufferPointer = tableFile.read_integer_from(4, tableFile.current_pos + 8)
+            nextEntryPointer = tableFile.read_integer_from(4, entryBufferPointer + 8)
+            tableFile.goto(nextEntryPointer)
+
+            while nextEntryPointer > 0:
+                fieldPointer = tableFile.current_pos + 4 * (fieldIndex + 1)
+                fieldToTry = tableFile.read_integer_from(4, fieldPointer)
+                
+                if fieldType == 2:
+                    fieldToTry = tableFile.read_string_from(fieldToTry)
+
+                if fieldToTry == field_value:
+                    data.append(self.read_entry(table_name, nextEntryPointer))
+
+                nextEntryPointerPos = fieldPointer + 4 * (nColumn - fieldIndex) + 4 # Get post of next entry pointer next to the previous entry pointer
+                nextEntryPointer = tableFile.read_integer_from(4, nextEntryPointerPos) # Read next entry pointer by skipping last entry pointer
+
+            return data
+                
+    def read_entry(self, table_name, entryPointer):
+        tableFile = self.open_table(table_name, 'r')
+
+        tableFile.goto(entryPointer)
+        entry = {}
+        entry['id'] = tableFile.read_integer(4)
+        for cellInfo in self.get_table_signature(table_name):
+            if cellInfo[1] == FieldType.INTEGER:
+                entry[cellInfo[0]] = tableFile.read_integer(4)
+            else:
+                stringPos = tableFile.read_integer(4)
+                pos = tableFile.current_pos
+                print(hex(stringPos), cellInfo[1], hex(pos - 4))
+                entry[cellInfo[0]] = tableFile.read_string_from(stringPos)
+                tableFile.goto(pos)
+        return entry
+
 
     def get_table_size(self, table_name: str) -> int:
         tableFile = self.open_table(table_name, 'r')
@@ -236,12 +309,12 @@ COURSES = [
      'COORDINATEUR': 'Thierry Massart', 'CREDITS': 10},
     {'MNEMONIQUE': 102, 'NOM': 'Fonctionnement des ordinateurs',
      'COORDINATEUR': 'Gilles Geeraerts', 'CREDITS': 5},
-    # {'MNEMONIQUE': 103, 'NOM': 'Algorithmique I',
-    #  'COORDINATEUR': 'Olivier Markowitch', 'CREDITS': 10},
-    # {'MNEMONIQUE': 105, 'NOM': 'Langages de programmation I',
-    #  'COORDINATEUR': 'Christophe Petit', 'CREDITS': 5},
-    # {'MNEMONIQUE': 106, 'NOM': 'Projet d\'informatique I',
-    #  'COORDINATEUR': 'Gwenaël Joret', 'CREDITS': 5},
+    {'MNEMONIQUE': 103, 'NOM': 'Algorithmique I',
+     'COORDINATEUR': 'Olivier Markowitch', 'CREDITS': 10},
+    {'MNEMONIQUE': 105, 'NOM': 'Langages de programmation I',
+     'COORDINATEUR': 'Christophe Petit', 'CREDITS': 5},
+    {'MNEMONIQUE': 106, 'NOM': 'Projet d\'informatique I',
+     'COORDINATEUR': 'Gwenaël Joret', 'CREDITS': 5},
 ]
 
 db = Database('programme')
@@ -254,8 +327,8 @@ db.create_table(
 )
 db.add_entry('cours', COURSES[0])
 db.add_entry('cours', COURSES[1])
-# db.add_entry('cours', COURSES[2])
-# db.add_entry('cours', COURSES[3])
-# db.add_entry('cours', COURSES[4])
+db.add_entry('cours', COURSES[2])
+db.add_entry('cours', COURSES[3])
+db.add_entry('cours', COURSES[4])
 
-db.get_entry('cours', 'NOM', 101)
+# print(db.get_entries('cours', 'CREDITS', 10))
