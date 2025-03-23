@@ -12,10 +12,10 @@ class BinaryFile:
     def current_pos(self) -> int:
         return self.__file.tell()
     
-    def increment_int(self, n, size):
-        currentPos = self.__file.tell()
-        currentInt = self.read_integer(4)
-        self.write_integer_to(currentInt + n, size, currentPos)
+    # def increment_int(self, n, size):
+    #     currentPos = self.__file.tell()
+    #     currentInt = self.read_integer(4)
+    #     self.write_integer_to(currentInt + n, size, currentPos)
 
     def get_size(self) -> int:
         currentPos = self.current_pos
@@ -46,6 +46,10 @@ class BinaryFile:
     def read_integer_from(self, size: int, pos: int) -> int:
         self.goto(pos)
         return self.read_integer(size)
+    
+    # def read_integer_away(self, size: int, shift: int) -> int:
+    #     self.goto(self.current_pos + shift)
+    #     return self.read_integer(size)
     
     def read_string(self) -> str:
         stringSize = self.read_integer(2)

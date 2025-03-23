@@ -195,7 +195,7 @@ def test_size_on_creation():
     assert db.get_table_size('cours') == 0
 
 def test_in_non_existing_table():
-    db = get_programme_db() #TODO: question, est-ce normal que ce soit la fonction get_programme_db au lieu de get_empty_db car cours est défini dans la première fonction
+    db = get_programme_db()
     with pytest.raises(ValueError):
         db.add_entry('COURS', COURSES[0])
 
@@ -231,18 +231,18 @@ def test_get():
     entries = db.get_entries('cours', 'CREDITS', 10)
     assert {entry['MNEMONIQUE'] for entry in entries} == {101, 103}
 
-# def test_select():
-#     db = get_programme_db()
-#     fill_courses(db)
-#     query = db.select_entry('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5)
-#     possibles = {
-#         (102, 'Fonctionnement des ordinateurs'),
-#         (105, 'Langages de programmation I'),
-#         (106, 'Projet d\'informatique I')
-#     }
-#     assert query in possibles
-#     query = db.select_entries('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5)
-#     assert set(query) == possibles
+def test_select():
+    db = get_programme_db()
+    fill_courses(db)
+    query = db.select_entry('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5)
+    possibles = {
+        (102, 'Fonctionnement des ordinateurs'),
+        (105, 'Langages de programmation I'),
+        (106, 'Projet d\'informatique I')
+    }
+    assert query in possibles
+    query = db.select_entries('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5)
+    assert set(query) == possibles
 
 # ########################################
 # #               Partie 4               #
