@@ -155,7 +155,7 @@ class Database:
         tableFile.shift_from(lastEntryBufferPointer, shift)
         self.update_entry_buffer_pointer(tableFile, shift)
 
-    def insert_string(self, tableFile: BinaryFile, entry: Entry) -> list[int]:
+    def insert_strings(self, tableFile: BinaryFile, entry: Entry) -> list[int]:
         spaceEntryString, entryString = self.scan_strings_entry(entry)
         lastEntryBufferPointer = self.get_last_string_buffer_pointer(tableFile)
 
@@ -190,7 +190,7 @@ class Database:
         lastEntryPointerPointer = entryBufferPointer + 12
         return lastEntryPointerPointer
     
-    def update_entrys_pointers(self, tableFile: BinaryFile, shift: int, entry):
+    def update_entrys_pointers(self, tableFile: BinaryFile, shift: int, table_name = None):
         lastIdUsedPointer = self.get_entry_buffer_pointer(tableFile)
         nbEntryPointer = self.get_nb_entry_pointer(tableFile)
 
@@ -210,7 +210,7 @@ class Database:
             firstEntryPointer = tableFile.get_size()
         else:
             firstEntryPointer = tableFile.read_integer_from(4, firstEntryPointerPointer) + shift
-            sizeOfEntry = (1 + len(entry)) * 4
+            sizeOfEntry = (len(self.get_table_signature(table_name)) + 1) * 4
 
             tableFile.goto(firstEntryPointer)
             for entryIndex in range(nbEntry):
@@ -277,9 +277,9 @@ class Database:
 
         shift = self.get_string_buffer_shift(tableFile, spaceEntryString)
         self.upgrade_string_buffer(tableFile, shift)
-        stringsPointer = self.insert_string(tableFile, entry)
+        stringsPointer = self.insert_strings(tableFile, entry)
 
-        newEntryId = self.update_entrys_pointers(tableFile, shift, entry)
+        newEntryId = self.update_entrys_pointers(tableFile, shift, table_name)
         self.insert_entry(tableFile, entry, newEntryId, stringsPointer, table_name)
 
     def analyse_field(self, tableFile: BinaryFile, entryPointer, entrySignature):
@@ -308,6 +308,9 @@ class Database:
         tableFile.goto(entryPointer)
         entry = []
 
+        if isinstance(fieldInfo, tuple):
+            fieldInfo = [fieldInfo]
+
         for offset, fieldType in fieldInfo:
             fieldPointer = entryPointer + offset
             field = tableFile.read_integer_from(4, fieldPointer)
@@ -322,7 +325,12 @@ class Database:
         nextEntryPointerPointer = entryPointer + nextEntryOffset
         nextEntryPointer = tableFile.read_integer_from(4, nextEntryPointerPointer)
 
-        return tuple(entry), nextEntryPointer
+        if len(entry) == 1:
+            entry = entry[0]
+        else:
+            entry = tuple(entry)
+
+        return entry, nextEntryPointer
 
 
     def get_complete_table(self, table_name: str) -> list[Entry]:
@@ -365,7 +373,7 @@ class Database:
         
         return entries
     
-    def analyseFieldSelection(self, entrySignature, fields, field_name):
+    def analyse_field_selection(self, entrySignature, fields, field_name):
         fieldToCheck = None
         fieldToGet = []
 
@@ -379,8 +387,11 @@ class Database:
             
             if currentFieldName in fields:
                 fieldToGet.append((offset, currentFieldType))
-        
-        return fieldToCheck, fieldToGet
+                
+        if len(fieldToGet) == 1:
+            return fieldToCheck, fieldToGet[0]
+        else:
+            return fieldToCheck, fieldToGet
     
     def select_entry(self, table_name: str, fields: tuple[str], field_name: str, field_value: Field) -> Field | tuple[Field]:
         tableFile = self.open_table(table_name, 'r')
@@ -390,12 +401,12 @@ class Database:
         nextEntryOffset = (len(entrySignature) + 1) * 4
         nextEntryPointer = self.get_first_entry_pointer(tableFile)
 
-        fieldToCheck, fieldToGet = self.analyseFieldSelection(entrySignature, fields, field_name)
+        fieldToCheck, fieldToGet = self.analyse_field_selection(entrySignature, fields, field_name)
 
         while nextEntryPointer > 0:
             currentEntryPointer  = nextEntryPointer
-            field, nextEntryPointer = self.analyse_field_selectively(tableFile, currentEntryPointer, nextEntryOffset, [fieldToCheck])
-            if field[0] == field_value:
+            field, nextEntryPointer = self.analyse_field_selectively(tableFile, currentEntryPointer, nextEntryOffset, fieldToCheck)
+            if field == field_value:
                 entry, _ = self.analyse_field_selectively(tableFile, currentEntryPointer, nextEntryOffset, fieldToGet)
                 return entry
 
@@ -409,13 +420,13 @@ class Database:
         nextEntryOffset = (len(entrySignature) + 1) * 4
         nextEntryPointer = self.get_first_entry_pointer(tableFile)
 
-        fieldToCheck, fieldToGet = self.analyseFieldSelection(entrySignature, fields, field_name)
+        fieldToCheck, fieldToGet = self.analyse_field_selection(entrySignature, fields, field_name)
         entries = []
 
         while nextEntryPointer > 0:
-            currentEntryPointer  = nextEntryPointer
+            currentEntryPointer = nextEntryPointer
             field, nextEntryPointer = self.analyse_field_selectively(tableFile, currentEntryPointer, nextEntryOffset, [fieldToCheck])
-            if field[0] == field_value:
+            if field == field_value:
                 entry, _ = self.analyse_field_selectively(tableFile, currentEntryPointer, nextEntryOffset, fieldToGet)
                 entries.append(entry)
 
@@ -428,39 +439,89 @@ class Database:
         nbEntry = tableFile.read_integer_from(4, nbEntryPointer)
 
         return nbEntry
+    
+    def update_entries(self, table_str: str, cond_name: str, cond_value: Field, update_name: str, update_value: Field) -> bool:
+        tableFile = self.open_table(table_str, 'r')
         
+        entrySignature = [('id', FieldType.INTEGER)] + self.get_table_signature(table_str)
 
-COURSES = [
-    {'MNEMONIQUE': 101, 'NOM': 'Programmation',
-     'COORDINATEUR': 'Thierry Massart', 'CREDITS': 10},
-    {'MNEMONIQUE': 102, 'NOM': 'Fonctionnement des ordinateurs',
-     'COORDINATEUR': 'Gilles Geeraerts', 'CREDITS': 5},
-    {'MNEMONIQUE': 103, 'NOM': 'Algorithmique I',
-     'COORDINATEUR': 'Olivier Markowitch', 'CREDITS': 10},
-    {'MNEMONIQUE': 105, 'NOM': 'Langages de programmation I',
-     'COORDINATEUR': 'Christophe Petit', 'CREDITS': 5},
-    {'MNEMONIQUE': 106, 'NOM': 'Projet d\'informatique I',
-     'COORDINATEUR': 'Gwenaël Joret', 'CREDITS': 5},
-]
+        nextEntryOffset = (len(entrySignature) + 1) * 4
+        nextEntryPointer = self.get_first_entry_pointer(tableFile)
 
-db = Database('programme')
-db.create_table(
-    'cours',
-    ('MNEMONIQUE', FieldType.INTEGER),
-    ('NOM', FieldType.STRING),
-    ('COORDINATEUR', FieldType.STRING),
-    ('CREDITS', FieldType.INTEGER)
-)
-db.add_entry('cours', COURSES[0])
-db.add_entry('cours', COURSES[1])
-db.add_entry('cours', COURSES[2])
-db.add_entry('cours', COURSES[3])
-db.add_entry('cours', COURSES[4])
+        fieldToSet, fieldToCheck = self.analyse_field_selection(entrySignature, cond_name, update_name)
+        updateStatus = False
 
-possibles = {
-    (102, 'Fonctionnement des ordinateurs'),
-    (105, 'Langages de programmation I'),
-    (106, 'Projet d\'informatique I')
-}
+        while nextEntryPointer > 0:
+            currentEntryPointer  = nextEntryPointer
+            field, nextEntryPointer = self.analyse_field_selectively(tableFile, currentEntryPointer, nextEntryOffset, [fieldToCheck])
+            if field == cond_value:
+                fieldOffset, fieldType = fieldToSet
+                fieldPointer = currentEntryPointer + fieldOffset
 
-print(db.select_entry('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5))
+                if fieldType == FieldType.INTEGER:
+                    if isinstance(update_value, int):
+                        tableFile.write_integer_to(update_value, 4, fieldPointer)
+                    else: 
+                        raise ValueError
+                else:
+                    if isinstance(update_value, str):
+                        stringPointer = tableFile.read_integer_from(4, fieldPointer)
+                        string = tableFile.read_string_from(stringPointer)
+                        
+                        if len(string) < len(update_value):
+                            shift = self.get_string_buffer_shift(tableFile, len(update_value))
+                            self.upgrade_string_buffer(tableFile, shift)
+                            self.update_entrys_pointers(tableFile, shift, table_str)
+                            stringPointer = self.get_last_string_buffer_pointer(tableFile)
+                            fieldPointer += shift
+                            tableFile.write_integer_to(stringPointer, 4, fieldPointer)
+
+                        tableFile.write_string_to(update_value, stringPointer)
+                    else: 
+                        raise ValueError
+
+                updateStatus = True
+        
+        return updateStatus
+
+# COURSES = [
+#     {'MNEMONIQUE': 101, 'NOM': 'Programmation',
+#      'COORDINATEUR': 'Thierry Massart', 'CREDITS': 10},
+#     {'MNEMONIQUE': 102, 'NOM': 'Fonctionnement des ordinateurs',
+#      'COORDINATEUR': 'Gilles Geeraerts', 'CREDITS': 5},
+#     {'MNEMONIQUE': 103, 'NOM': 'Algorithmique I',
+#      'COORDINATEUR': 'Olivier Markowitch', 'CREDITS': 10},
+#     {'MNEMONIQUE': 105, 'NOM': 'Langages de programmation I',
+#      'COORDINATEUR': 'Christophe Petit', 'CREDITS': 5},
+#     {'MNEMONIQUE': 106, 'NOM': 'Projet d\'informatique I',
+#      'COORDINATEUR': 'Gwenaël Joret', 'CREDITS': 5},
+# ]
+
+# db = Database('programme')
+# db.create_table(
+#     'cours',
+#     ('MNEMONIQUE', FieldType.INTEGER),
+#     ('NOM', FieldType.STRING),
+#     ('COORDINATEUR', FieldType.STRING),
+#     ('CREDITS', FieldType.INTEGER)
+# )
+# # db.add_entry('cours', COURSES[0])
+# # db.add_entry('cours', COURSES[1])
+# # db.add_entry('cours', COURSES[2])
+# # db.add_entry('cours', COURSES[3])
+# # db.add_entry('cours', COURSES[4])
+
+# db.add_entry(
+#         'cours',
+#         {'MNEMONIQUE': 205, 'NOM': 'CFN',
+#          'COORDINATEUR': 'Maarten Jansen', 'CREDITS': 5}
+#     )
+
+# correct_name = 'Calcul Formel et Numérique'
+#     # Requires reallocation
+# db.update_entries(
+#     'cours',
+#     'MNEMONIQUE', 205,
+#     'NOM', correct_name
+# )
+# print(db.select_entry('cours', ('NOM',), 'id', 1))
