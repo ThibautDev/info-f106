@@ -190,6 +190,42 @@ class Database:
         lastEntryPointerPointer = entryBufferPointer + 12
         return lastEntryPointerPointer
     
+    def update_entrys_pointers_test(self, tableFile: BinaryFile, shift: int, table_name = None):
+        firstEntryPointerPointer = self.get_first_entry_pointer_pointer(tableFile)
+        lastEntryPointerPointer = self.get_last_entry_pointer_pointer(tableFile)
+
+        firstEntryPointer = tableFile.read_integer_from(4, firstEntryPointerPointer)
+        lastEntryPointer = tableFile.read_integer_from(4, lastEntryPointerPointer)
+
+        if firstEntryPointer > 0:
+            firstEntryPointer += shift
+            tableFile.write_integer_to(firstEntryPointer, 4, firstEntryPointerPointer)
+
+        if lastEntryPointerPointer > 0:
+            lastEntryPointer += shift
+            tableFile.write_integer_to(lastEntryPointer, 4, lastEntryPointerPointer)
+
+        sizeOfEntry = (len(self.get_table_signature(table_name)) + 1) * 4
+        startOfEntry = firstEntryPointer
+
+        while startOfEntry > 0:
+            lastEntryPointerPointer = startOfEntry + sizeOfEntry
+            nextEntryPointerPointer = startOfEntry + sizeOfEntry + 4
+
+            lastEntryPointer = tableFile.read_integer_from(4, lastEntryPointerPointer)
+            nextEntryPointer = tableFile.read_integer_from(4, nextEntryPointerPointer)
+
+            if lastEntryPointer > 0:
+                lastEntryPointer += shift
+                tableFile.write_integer_to(lastEntryPointer, 4, lastEntryPointerPointer)
+
+            if nextEntryPointer > 0:
+                lastEntryPointer += shift
+                tableFile.write_integer_to(nextEntryPointer, 4, nextEntryPointerPointer)
+            
+            startOfEntry = nextEntryPointer
+
+
     def update_entrys_pointers(self, tableFile: BinaryFile, shift: int, table_name = None):
         lastIdUsedPointer = self.get_entry_buffer_pointer(tableFile)
         nbEntryPointer = self.get_nb_entry_pointer(tableFile)
@@ -471,7 +507,7 @@ class Database:
                         if len(string) < len(update_value):
                             shift = self.get_string_buffer_shift(tableFile, len(update_value))
                             self.upgrade_string_buffer(tableFile, shift)
-                            self.update_entrys_pointers(tableFile, shift, table_str)
+                            self.update_entrys_pointers_test(tableFile, shift, table_str)
                             stringPointer = self.get_last_string_buffer_pointer(tableFile)
                             fieldPointer += shift
                             tableFile.write_integer_to(stringPointer, 4, fieldPointer)
@@ -481,47 +517,47 @@ class Database:
                         raise ValueError
 
                 updateStatus = True
-        
         return updateStatus
 
-# COURSES = [
-#     {'MNEMONIQUE': 101, 'NOM': 'Programmation',
-#      'COORDINATEUR': 'Thierry Massart', 'CREDITS': 10},
-#     {'MNEMONIQUE': 102, 'NOM': 'Fonctionnement des ordinateurs',
-#      'COORDINATEUR': 'Gilles Geeraerts', 'CREDITS': 5},
-#     {'MNEMONIQUE': 103, 'NOM': 'Algorithmique I',
-#      'COORDINATEUR': 'Olivier Markowitch', 'CREDITS': 10},
-#     {'MNEMONIQUE': 105, 'NOM': 'Langages de programmation I',
-#      'COORDINATEUR': 'Christophe Petit', 'CREDITS': 5},
-#     {'MNEMONIQUE': 106, 'NOM': 'Projet d\'informatique I',
-#      'COORDINATEUR': 'Gwenaël Joret', 'CREDITS': 5},
-# ]
+COURSES = [
+    {'MNEMONIQUE': 101, 'NOM': 'Programmation',
+     'COORDINATEUR': 'Thierry Massart', 'CREDITS': 10},
+    {'MNEMONIQUE': 102, 'NOM': 'Fonctionnement des ordinateurs',
+     'COORDINATEUR': 'Gilles Geeraerts', 'CREDITS': 5},
+    {'MNEMONIQUE': 103, 'NOM': 'Algorithmique I',
+     'COORDINATEUR': 'Olivier Markowitch', 'CREDITS': 10},
+    {'MNEMONIQUE': 105, 'NOM': 'Langages de programmation I',
+     'COORDINATEUR': 'Christophe Petit', 'CREDITS': 5},
+    {'MNEMONIQUE': 106, 'NOM': 'Projet d\'informatique I',
+     'COORDINATEUR': 'Gwenaël Joret', 'CREDITS': 5},
+]
 
-# db = Database('programme')
-# db.create_table(
-#     'cours',
-#     ('MNEMONIQUE', FieldType.INTEGER),
-#     ('NOM', FieldType.STRING),
-#     ('COORDINATEUR', FieldType.STRING),
-#     ('CREDITS', FieldType.INTEGER)
-# )
-# # db.add_entry('cours', COURSES[0])
-# # db.add_entry('cours', COURSES[1])
-# # db.add_entry('cours', COURSES[2])
-# # db.add_entry('cours', COURSES[3])
-# # db.add_entry('cours', COURSES[4])
+db = Database('programme')
+db.create_table(
+    'cours',
+    ('MNEMONIQUE', FieldType.INTEGER),
+    ('NOM', FieldType.STRING),
+    ('COORDINATEUR', FieldType.STRING),
+    ('CREDITS', FieldType.INTEGER)
+)
+db.add_entry('cours', COURSES[0])
+db.add_entry('cours', COURSES[1])
+db.add_entry('cours', COURSES[2])
+db.add_entry('cours', COURSES[3])
+db.add_entry('cours', COURSES[4])
 
-# db.add_entry(
-#         'cours',
-#         {'MNEMONIQUE': 205, 'NOM': 'CFN',
-#          'COORDINATEUR': 'Maarten Jansen', 'CREDITS': 5}
-#     )
+db.add_entry(
+        'cours',
+        {'MNEMONIQUE': 205, 'NOM': 'CFN',
+         'COORDINATEUR': 'Maarten Jansen', 'CREDITS': 5}
+    )
 
-# correct_name = 'Calcul Formel et Numérique'
-#     # Requires reallocation
-# db.update_entries(
-#     'cours',
-#     'MNEMONIQUE', 205,
-#     'NOM', correct_name
-# )
-# print(db.select_entry('cours', ('NOM',), 'id', 1))
+correct_name = 'Calcul Formel et Numérique'
+    # Requires reallocation
+db.update_entries(
+    'cours',
+    'MNEMONIQUE', 205,
+    'NOM', correct_name
+)
+
+print(db.select_entry('cours', ('NOM',), 'id', 6))
