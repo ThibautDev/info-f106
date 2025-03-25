@@ -305,16 +305,16 @@ def test_id_preserved_after_update():
     db.update_entries('cours', 'CREDITS', 10, 'NOM', '')
     assert db.select_entry('cours', ('id',), 'MNEMONIQUE', 103) == f103_id
 
-# def test_delete_entries():
-#     db = get_programme_db()
-#     fill_courses(db)
-#     db.delete_entries('cours', 'CREDITS', 5)
-#     expected = [
-#         course | {'id': i+1}
-#         for i, course in enumerate(COURSES)
-#         if course['CREDITS'] != 5
-#     ]
-#     assert db.get_complete_table('cours') == expected
+def test_delete_entries():
+    db = get_programme_db()
+    fill_courses(db)
+    db.delete_entries('cours', 'CREDITS', 5)
+    expected = [
+        course | {'id': i+1}
+        for i, course in enumerate(COURSES)
+        if course['CREDITS'] != 5
+    ]
+    assert db.get_complete_table('cours') == expected
 
 # def test_resize_after_delete():
 #     db = get_programme_db()
