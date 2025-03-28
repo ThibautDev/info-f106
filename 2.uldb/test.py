@@ -221,28 +221,28 @@ def test_size_after_insert():
     assert db.get_table_size('cours') == len(COURSES)
     assert db.get_table_size('cours') == len(db.get_complete_table('cours'))
 
-# def test_get():
-#     db = get_programme_db()
-#     fill_courses(db)
-#     entry = db.get_entry('cours', 'MNEMONIQUE', 101)
-#     assert entry == COURSES[0] | {'id': 1}
-#     entries = db.get_entries('cours', 'MNEMONIQUE', 101)
-#     assert entries == [COURSES[0] | {'id': 1}]
-#     entries = db.get_entries('cours', 'CREDITS', 10)
-#     assert {entry['MNEMONIQUE'] for entry in entries} == {101, 103}
+def test_get():
+    db = get_programme_db()
+    fill_courses(db)
+    entry = db.get_entry('cours', 'MNEMONIQUE', 101)
+    assert entry == COURSES[0] | {'id': 1}
+    entries = db.get_entries('cours', 'MNEMONIQUE', 101)
+    assert entries == [COURSES[0] | {'id': 1}]
+    entries = db.get_entries('cours', 'CREDITS', 10)
+    assert {entry['MNEMONIQUE'] for entry in entries} == {101, 103}
 
-# def test_select():
-#     db = get_programme_db()
-#     fill_courses(db)
-#     query = db.select_entry('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5)
-#     possibles = {
-#         (102, 'Fonctionnement des ordinateurs'),
-#         (105, 'Langages de programmation I'),
-#         (106, 'Projet d\'informatique I')
-#     }
-#     assert query in possibles
-#     query = db.select_entries('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5)
-#     assert set(query) == possibles
+def test_select():
+    db = get_programme_db()
+    fill_courses(db)
+    query = db.select_entry('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5)
+    possibles = {
+        (102, 'Fonctionnement des ordinateurs'),
+        (105, 'Langages de programmation I'),
+        (106, 'Projet d\'informatique I')
+    }
+    assert query in possibles
+    query = db.select_entries('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5)
+    assert set(query) == possibles
 
 # ########################################
 # #               Partie 4               #

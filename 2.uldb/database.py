@@ -79,23 +79,23 @@ class Database:
         except:
             raise ValueError
         
-    def get_string_header_pointer(self, tableFile: BinaryFile):
-        nColumn = tableFile.read_integer_from(self.size_of_int(1), 4)
+    def get_string_header_pointer(self, table_file: BinaryFile):
+        nColumn = table_file.read_integer_from(self.size_of_int(1), 4)
 
         for _ in range(nColumn):
-            tableFile.read_integer(1)
-            tableFile.read_string()
+            table_file.read_integer(1)
+            table_file.read_string()
 
-        return tableFile.current_pos
+        return table_file.current_pos
     
-    def get_pointer(self, tableFile: BinaryFile, pointers_name: str | list[str]):
+    def get_pointer(self, table_file: BinaryFile, pointers_name: str | list[str]):
         '''
         Powerfull fonction that can give any pointer of the database
         '''
         
         # Get headers pointers
-        string_header_pointer = self.get_string_header_pointer(tableFile)
-        entry_header_pointer = tableFile.read_integer_from(self.size_of_int(1), string_header_pointer + 8)
+        string_header_pointer = self.get_string_header_pointer(table_file)
+        entry_header_pointer = table_file.read_integer_from(self.size_of_int(1), string_header_pointer + 8)
 
         # Define all pointer pos
         pointers = {
@@ -115,23 +115,23 @@ class Database:
         else:
             return [pointers[name] for name in pointers_name]
         
-    def get(self, tableFile: BinaryFile, pointers_name: str | list[str]):
-        pointers = self.get_pointer(tableFile, pointers_name)
+    def get(self, table_file: BinaryFile, pointers_name: str | list[str]):
+        pointers = self.get_pointer(table_file, pointers_name)
 
         if isinstance(pointers_name, str):
-            return tableFile.read_integer_from(self.size_of_int(1), pointers)
+            return table_file.read_integer_from(self.size_of_int(1), pointers)
         else:
-            return [tableFile.read_integer_from(self.size_of_int(1), pointer) for pointer in pointers]
+            return [table_file.read_integer_from(self.size_of_int(1), pointer) for pointer in pointers]
     
     def get_table_signature(self, table_name: str) -> TableSignature:        
-        tableFile = self.open_table(table_name, 'r')
+        table_file = self.open_table(table_name, 'r')
         
         tableSignature = []
 
-        nColumn = tableFile.read_integer_from(self.size_of_int(1), 4)
+        nColumn = table_file.read_integer_from(self.size_of_int(1), 4)
         for _ in range(nColumn):
-            cellType = FieldType(tableFile.read_integer(1))
-            cellName = tableFile.read_string()
+            cellType = FieldType(table_file.read_integer(1))
+            cellName = table_file.read_string()
             tableSignature.append((cellName, cellType))
 
         return tableSignature
@@ -147,8 +147,8 @@ class Database:
 
         return stringSpace, strings
     
-    def get_string_buffer_shift(self, tableFile: BinaryFile, space: int):
-        stringBufferPointer, freeSpaceStringBufferPointer, entryBufferPointer = self.get(tableFile, ['first_string', 'free_string_space', 'entry_buffer'])
+    def get_string_buffer_shift(self, table_file: BinaryFile, space: int):
+        stringBufferPointer, freeSpaceStringBufferPointer, entryBufferPointer = self.get(table_file, ['first_string', 'free_string_space', 'entry_buffer'])
 
         # Calculate spaces
         stringBufferSpace = entryBufferPointer - stringBufferPointer
@@ -164,122 +164,260 @@ class Database:
         shift = newStringBufferSpace - stringBufferSpace
         return shift
      
-    def upgrade_string_buffer(self, tableFile: BinaryFile, shift):
-        freeSpaceStringBufferPointerPointer, entry_buffer_pointer  = self.get_pointer(tableFile, ['free_string_space', 'entry_buffer'])
-        freeSpaceStringBufferPointer = tableFile.read_integer_from(self.size_of_int(1), freeSpaceStringBufferPointerPointer)
-        tableFile.shift_from(freeSpaceStringBufferPointer, shift)
-        tableFile.increment_int_from(shift, self.size_of_int(1), entry_buffer_pointer)
+    def upgrade_string_buffer(self, table_file: BinaryFile, shift):
+        freeSpaceStringBufferPointerPointer, entry_buffer_pointer  = self.get_pointer(table_file, ['free_string_space', 'entry_buffer'])
+        freeSpaceStringBufferPointer = table_file.read_integer_from(self.size_of_int(1), freeSpaceStringBufferPointerPointer)
+        table_file.shift_from(freeSpaceStringBufferPointer, shift)
+        table_file.increment_int_from(shift, self.size_of_int(1), entry_buffer_pointer)
         
-    def upgrade_entry_buffer(self, tableFile: BinaryFile, table_name, shift):
-        pointersToShift = self.get_pointer(tableFile, ['first_entry', 'last_entry', 'first_deleted_entry'])
+    def upgrade_entry_buffer(self, table_file: BinaryFile, table_name, shift):
+        pointersToShift = self.get_pointer(table_file, ['first_entry', 'last_entry', 'first_deleted_entry'])
 
         for pointer in pointersToShift:
-            tableFile.increment_int_from(shift, 4, pointer)
+            table_file.increment_int_from(shift, 4, pointer)
 
-        nb_id = self.get(tableFile, 'last_id')
+        nb_id = self.get(table_file, 'last_id')
         last_entry_pointer_offset =  self.size_of_int(1 + len(self.get_table_signature(table_name)))
         next_entry_pointer_offset = self.size_of_int(2 + len(self.get_table_signature(table_name)))
 
-        entry_pointer, deleted_entry_pointer = self.get(tableFile, ['first_entry', 'first_deleted_entry'])
+        entry_pointer, deleted_entry_pointer = self.get(table_file, ['first_entry', 'first_deleted_entry'])
 
         while entry_pointer > 0:
-            tableFile.increment_int_from(shift, self.size_of_int(1), entry_pointer + last_entry_pointer_offset)
-            tableFile.increment_int_from(shift, self.size_of_int(1), entry_pointer + next_entry_pointer_offset)
-            entry_pointer = tableFile.read_integer_from(4, entry_pointer + next_entry_pointer_offset)
+            table_file.increment_int_from(shift, self.size_of_int(1), entry_pointer + last_entry_pointer_offset)
+            table_file.increment_int_from(shift, self.size_of_int(1), entry_pointer + next_entry_pointer_offset)
+            entry_pointer = table_file.read_integer_from(4, entry_pointer + next_entry_pointer_offset)
 
         while deleted_entry_pointer > 0:
-            tableFile.increment_int_from(shift, self.size_of_int(1), deleted_entry_pointer + last_entry_pointer_offset)
-            tableFile.increment_int_from(shift, self.size_of_int(1), deleted_entry_pointer + next_entry_pointer_offset)
-            entry_pointer = tableFile.read_integer_from(4, deleted_entry_pointer + next_entry_pointer_offset)
+            table_file.increment_int_from(shift, self.size_of_int(1), deleted_entry_pointer + last_entry_pointer_offset)
+            table_file.increment_int_from(shift, self.size_of_int(1), deleted_entry_pointer + next_entry_pointer_offset)
+            entry_pointer = table_file.read_integer_from(4, deleted_entry_pointer + next_entry_pointer_offset)
 
-    def upgrade_db(self, tableFile, table_name, space):
-        shift = self.get_string_buffer_shift(tableFile, space)
-        self.upgrade_string_buffer(tableFile, shift)
-        self.upgrade_entry_buffer(tableFile, table_name, shift)
+    def upgrade_db(self, table_file, table_name, space):
+        shift = self.get_string_buffer_shift(table_file, space)
+        self.upgrade_string_buffer(table_file, shift)
+        self.upgrade_entry_buffer(table_file, table_name, shift)
 
-    def insert_strings(self, tableFile: BinaryFile, entry_string: list[str], string_space) -> list[int]:
-        free_string_space_pointer = self.get(tableFile, 'free_string_space')
+    def insert_strings(self, table_file: BinaryFile, entry_string: list[str], string_space) -> list[int]:
+        free_string_space_pointer = self.get(table_file, 'free_string_space')
         strings_pointer = []
 
-        tableFile.goto(free_string_space_pointer)
+        table_file.goto(free_string_space_pointer)
         for string in entry_string:
-            strings_pointer.append(tableFile.current_pos)
-            tableFile.write_string(string)
+            strings_pointer.append(table_file.current_pos)
+            table_file.write_string(string)
 
-        free_string_space_pointer_pointer = self.get_pointer(tableFile, 'free_string_space')
-        tableFile.increment_int_from(string_space, 4, free_string_space_pointer_pointer)
+        free_string_space_pointer_pointer = self.get_pointer(table_file, 'free_string_space')
+        table_file.increment_int_from(string_space, 4, free_string_space_pointer_pointer)
 
         return strings_pointer
     
-    def get_new_entry_pointer(self, tableFile: BinaryFile, table_signature):
-        last_entry_pointer, first_deleted_entry_pointer = self.get(tableFile, ['last_entry', 'first_deleted_entry'])
+    def get_new_entry_pointer(self, table_file: BinaryFile, table_signature):
+        last_entry_pointer, first_deleted_entry_pointer = self.get(table_file, ['last_entry', 'first_deleted_entry'])
 
         if first_deleted_entry_pointer > 0:
             entry_pointer = first_deleted_entry_pointer
 
-        elif last_entry_pointer > 0:
-            entry_pointer = tableFile.get_size()
+            # TODO
 
-            last_entry_pointer_pointer = self.get_pointer(tableFile, 'last_entry')
+        elif last_entry_pointer > 0:
+            entry_pointer = table_file.get_size()
 
             next_entry_pointer_offset = self.size_of_int(len(table_signature) + 1)
+
+            last_entry_pointer_pointer = self.get_pointer(table_file, 'last_entry')
             last_entry_next_entry_pointer_pointer = last_entry_pointer + next_entry_pointer_offset
 
-            tableFile.write_integer_to(entry_pointer, self.size_of_int(1), last_entry_pointer_pointer)
-            tableFile.write_integer_to(entry_pointer, self.size_of_int(1), last_entry_next_entry_pointer_pointer)
+            table_file.write_integer_to(entry_pointer, self.size_of_int(1), last_entry_pointer_pointer)
+            table_file.write_integer_to(entry_pointer, self.size_of_int(1), last_entry_next_entry_pointer_pointer)
         else:
-            first_entry_pointer_pointer, last_entry_pointer_pointer = self.get_pointer(tableFile, ['first_entry', 'last_entry'])
-            entry_pointer = tableFile.get_size()
-            tableFile.write_integer_to(entry_pointer, self.size_of_int(1), first_entry_pointer_pointer)
-            tableFile.write_integer_to(entry_pointer, self.size_of_int(1), last_entry_pointer_pointer)
+            first_entry_pointer_pointer, last_entry_pointer_pointer = self.get_pointer(table_file, ['first_entry', 'last_entry'])
+            entry_pointer = table_file.get_size()
+            table_file.write_integer_to(entry_pointer, self.size_of_int(1), first_entry_pointer_pointer)
+            table_file.write_integer_to(entry_pointer, self.size_of_int(1), last_entry_pointer_pointer)
 
         return entry_pointer, last_entry_pointer, -1
     
-    def increment_id(self, tableFile: BinaryFile):
-        last_id_pointer, nb_entry_pointer = self.get_pointer(tableFile, ['last_id', 'nb_entry'])
+    def increment_id(self, table_file: BinaryFile):
+        last_id_pointer, nb_entry_pointer = self.get_pointer(table_file, ['last_id', 'nb_entry'])
 
-        tableFile.increment_int_from(1, self.size_of_int(1), last_id_pointer)
-        tableFile.increment_int_from(1, self.size_of_int(1), nb_entry_pointer)
+        table_file.increment_int_from(1, self.size_of_int(1), last_id_pointer)
+        table_file.increment_int_from(1, self.size_of_int(1), nb_entry_pointer)
 
-        new_id = self.get(tableFile, 'last_id')
+        new_id = self.get(table_file, 'last_id')
         return new_id
     
     def add_entry(self, table_name: str, entry: Entry) -> None:
-        tableFile = self.open_table(table_name, 'r')
+        table_file = self.open_table(table_name, 'r')
         spaceEntryString, entry_string = self.scan_strings_entry(entry)
         entry_signature = [('id', FieldType.INTEGER)] + self.get_table_signature(table_name)
 
-        self.upgrade_db(tableFile, table_name, spaceEntryString)
+        self.upgrade_db(table_file, table_name, spaceEntryString)
 
-        entry_id = self.increment_id(tableFile)
-        strings_pointer = self.insert_strings(tableFile, entry_string, spaceEntryString)
-        entry_pointer, last_entry_pointer, next_entry_pointer = self.get_new_entry_pointer(tableFile, entry_signature)
+        entry_id = self.increment_id(table_file)
+        strings_pointer = self.insert_strings(table_file, entry_string, spaceEntryString)
+        entry_pointer, last_entry_pointer, next_entry_pointer = self.get_new_entry_pointer(table_file, entry_signature)
 
-        tableFile.write_integer_to(entry_id, self.size_of_int(1), entry_pointer)
-        tableFile.write_fields(self, table_name, strings_pointer, entry)
-        tableFile.write_integer(last_entry_pointer, self.size_of_int(1))
-        tableFile.write_integer(next_entry_pointer, self.size_of_int(1))
+        table_file.write_integer_to(entry_id, self.size_of_int(1), entry_pointer)
+        table_file.write_fields(self, table_name, strings_pointer, entry)
+        table_file.write_integer(last_entry_pointer, self.size_of_int(1))
+        table_file.write_integer(next_entry_pointer, self.size_of_int(1))
 
     def get_table_size(self, table_name: str) -> int:
-        tableFile = self.open_table(table_name, 'r')
-        return self.get(tableFile, 'nb_entry')
+        table_file = self.open_table(table_name, 'r')
+        return self.get(table_file, 'nb_entry')
     
 
     def get_complete_table(self, table_name: str) -> list[Entry]:
-        tableFile = self.open_table(table_name, 'r')
+        table_file = self.open_table(table_name, 'r')
         
         complete_table = []
-        entrySignature = [('id', FieldType.INTEGER)] + self.get_table_signature(table_name)
-        entry_pointer = self.get(tableFile, 'first_entry')
+        field_signature = [('id', FieldType.INTEGER)] + self.get_table_signature(table_name)
+        entry_pointer = self.get(table_file, 'first_entry')
 
         while entry_pointer > 0:
-            entry, entry_pointer = tableFile.analyse_entry(entrySignature, entry_pointer)
+            entry, entry_pointer = table_file.analyse_entry(field_signature, entry_pointer)
             complete_table.append(entry)
         
         return complete_table
     
-    
+    def get_field_info(self, field_signature, field_name):
+        field_offset = []
 
+        for field_index, field in enumerate(field_signature):
+            if field[0] in field_name:
+                field_offset.append((self.size_of_int(field_index), field[1]))
+
+        if len(field_offset) == 1:
+            return field_offset[0]
+        else:
+            return field_offset
+        
+    def read_entry(self, table_file: BinaryFile, field_signature, entry_pointer):
+        entry = {}
+        table_file.goto(entry_pointer)
+
+        for field in field_signature:
+            fieldName = field[0]
+            fieldType = repr(field[1])
+
+            if fieldType == repr(FieldType.INTEGER):
+                entry[fieldName] = table_file.read_integer(4)
+            else:
+                string_pointer = table_file.read_integer(4)
+                current_field_pointer = table_file.current_pos
+                entry[fieldName] = table_file.read_string_from(string_pointer)
+                table_file.goto(current_field_pointer)
+
+        return entry
+    
+    def read_field(self, table_file: BinaryFile, entry_pointer, field_infos):
+        field_offset, field_type = field_infos
+        
+        if field_type == FieldType.INTEGER:
+            field = table_file.read_integer_from(self.size_of_int(1), entry_pointer + field_offset)
+        else:
+            string_pointer = table_file.read_integer_from(self.size_of_int(1), entry_pointer + field_offset)
+            field = table_file.read_string_from(string_pointer)
+
+        return field
+    
+    def read_selection(self, table_file: BinaryFile, selection, entry_pointer):
+        fields = []
+
+        for field in selection:
+            field_offset = field[0]
+            field_type = field[1]
+            
+            if field_type == FieldType.INTEGER: 
+                fields.append(table_file.read_integer_from(self.size_of_int(1), entry_pointer + field_offset))
+            else:
+                string_pointer = table_file.read_integer_from(self.size_of_int(1), entry_pointer + field_offset)
+                fields.append(table_file.read_string_from(string_pointer))
+
+        return tuple(fields)
+
+    def get_entry(self, table_name: str, field_name: str, field_value: Field) -> Entry | None:
+        table_file = self.open_table(table_name, 'r')
+        field_signature = [('id', FieldType.INTEGER)] + self.get_table_signature(table_name)
+        
+        field_info = self.get_field_info(field_signature, field_name)
+        next_entry_pointer_offset = self.size_of_int(len(field_signature) + 1)
+
+        entry_pointer = self.get(table_file, 'first_entry')
+
+        while entry_pointer > 0:
+            field = self.read_field(table_file, entry_pointer, field_info)
+
+            if field == field_value:
+                return self.read_entry(table_file, field_signature, entry_pointer)
+            
+            entry_pointer = table_file.read_integer_from(self.size_of_int(1), entry_pointer + next_entry_pointer_offset)
+
+        return None
+    
+    def get_entries(self, table_name: str, field_name: str, field_value: Field) -> list[Entry]:
+        entries = []
+
+        table_file = self.open_table(table_name, 'r')
+        field_signature = [('id', FieldType.INTEGER)] + self.get_table_signature(table_name)
+        
+        field_info = self.get_field_info(field_signature, field_name)
+        next_entry_pointer_offset = self.size_of_int(len(field_signature) + 1)
+
+        entry_pointer = self.get(table_file, 'first_entry')
+
+        while entry_pointer > 0:
+            field = self.read_field(table_file, entry_pointer, field_info)
+
+            if field == field_value:
+                entries.append(self.read_entry(table_file, field_signature, entry_pointer))
+            
+            entry_pointer = table_file.read_integer_from(self.size_of_int(1), entry_pointer + next_entry_pointer_offset)
+
+        return entries
+    
+    def select_entry(self, table_name: str, fields: tuple[str], field_name: str, field_value: Field) -> Field | tuple[Field]:
+        table_file = self.open_table(table_name, 'r')
+        field_signature = [('id', FieldType.INTEGER)] + self.get_table_signature(table_name)
+
+        field_info = self.get_field_info(field_signature, field_name)
+        selection = self.get_field_info(field_signature, fields)
+        next_entry_pointer_offset = self.size_of_int(len(field_signature) + 1)
+
+        entry_pointer = self.get(table_file, 'first_entry')
+
+        while entry_pointer > 0:
+            field = self.read_field(table_file, entry_pointer, field_info)
+
+            if field == field_value:
+                return self.read_selection(table_file, selection, entry_pointer)
+            
+            entry_pointer = table_file.read_integer_from(self.size_of_int(1), entry_pointer + next_entry_pointer_offset)
+
+        return None
+    
+    def select_entries(self, table: str, fields: tuple[str], field_name: str, field_value: Field) -> list[Field | tuple[Field]]:
+        entry_fields = set()
+
+        table_file = self.open_table(table, 'r')
+        field_signature = [('id', FieldType.INTEGER)] + self.get_table_signature(table)
+
+        field_info = self.get_field_info(field_signature, field_name)
+        selection = self.get_field_info(field_signature, fields)
+        next_entry_pointer_offset = self.size_of_int(len(field_signature) + 1)
+
+        entry_pointer = self.get(table_file, 'first_entry')
+
+        while entry_pointer > 0:
+            field = self.read_field(table_file, entry_pointer, field_info)
+
+            if field == field_value:
+                entry_fields.add(self.read_selection(table_file, selection, entry_pointer))
+            
+            entry_pointer = table_file.read_integer_from(self.size_of_int(1), entry_pointer + next_entry_pointer_offset)
+
+        return entry_fields
+        
 COURSES = [
     {'MNEMONIQUE': 101, 'NOM': 'Programmation',
      'COORDINATEUR': 'Thierry Massart', 'CREDITS': 10},
@@ -308,4 +446,5 @@ db.add_entry('cours', COURSES[2])
 db.add_entry('cours', COURSES[3])
 db.add_entry('cours', COURSES[4])
 
-print(db.get_complete_table("cours"))
+print(db.get_entry('cours', 'NOM', 'Programmation'))
+# print(db.select_entries('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5))
