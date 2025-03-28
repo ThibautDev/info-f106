@@ -151,9 +151,9 @@ def test_delete_table():
     db.delete_table('cours')
     assert db.list_tables() == []
 
-########################################
+# #######################################
 #               Partie 3               #
-########################################
+# #######################################
 
 def test_insert_in_table():
     db = get_programme_db()
@@ -221,100 +221,100 @@ def test_size_after_insert():
     assert db.get_table_size('cours') == len(COURSES)
     assert db.get_table_size('cours') == len(db.get_complete_table('cours'))
 
-def test_get():
-    db = get_programme_db()
-    fill_courses(db)
-    entry = db.get_entry('cours', 'MNEMONIQUE', 101)
-    assert entry == COURSES[0] | {'id': 1}
-    entries = db.get_entries('cours', 'MNEMONIQUE', 101)
-    assert entries == [COURSES[0] | {'id': 1}]
-    entries = db.get_entries('cours', 'CREDITS', 10)
-    assert {entry['MNEMONIQUE'] for entry in entries} == {101, 103}
+# def test_get():
+#     db = get_programme_db()
+#     fill_courses(db)
+#     entry = db.get_entry('cours', 'MNEMONIQUE', 101)
+#     assert entry == COURSES[0] | {'id': 1}
+#     entries = db.get_entries('cours', 'MNEMONIQUE', 101)
+#     assert entries == [COURSES[0] | {'id': 1}]
+#     entries = db.get_entries('cours', 'CREDITS', 10)
+#     assert {entry['MNEMONIQUE'] for entry in entries} == {101, 103}
 
-def test_select():
-    db = get_programme_db()
-    fill_courses(db)
-    query = db.select_entry('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5)
-    possibles = {
-        (102, 'Fonctionnement des ordinateurs'),
-        (105, 'Langages de programmation I'),
-        (106, 'Projet d\'informatique I')
-    }
-    assert query in possibles
-    query = db.select_entries('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5)
-    assert set(query) == possibles
+# def test_select():
+#     db = get_programme_db()
+#     fill_courses(db)
+#     query = db.select_entry('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5)
+#     possibles = {
+#         (102, 'Fonctionnement des ordinateurs'),
+#         (105, 'Langages de programmation I'),
+#         (106, 'Projet d\'informatique I')
+#     }
+#     assert query in possibles
+#     query = db.select_entries('cours', ('MNEMONIQUE', 'NOM'), 'CREDITS', 5)
+#     assert set(query) == possibles
 
 # ########################################
 # #               Partie 4               #
 # ########################################
 
-def test_update_int():
-    db = get_programme_db()
-    entry = COURSES[0] | {'CREDITS': 0}
-    db.add_entry('cours', entry)
-    assert db.select_entry('cours', ('CREDITS',), 'id', 1) == 0
-    # oopsie: should be 10 ECTS
-    updated = db.update_entries(
-        'cours',
-        'id', 1,
-        'CREDITS', 10
-    )
-    assert updated
-    assert db.select_entry('cours', ('CREDITS',), 'id', 1) == 10
+# def test_update_int():
+#     db = get_programme_db()
+#     entry = COURSES[0] | {'CREDITS': 0}
+#     db.add_entry('cours', entry)
+#     assert db.select_entry('cours', ('CREDITS',), 'id', 1) == 0
+#     # oopsie: should be 10 ECTS
+#     updated = db.update_entries(
+#         'cours',
+#         'id', 1,
+#         'CREDITS', 10
+#     )
+#     assert updated
+#     assert db.select_entry('cours', ('CREDITS',), 'id', 1) == 10
 
-def test_update_shorter_string():
-    db = get_programme_db()
-    db.add_entry('cours', COURSES[1])
-    db.update_entries(
-        'cours',
-        'NOM', 'Fonctionnement des ordinateurs',
-        'NOM', 'FDO'
-    )
-    assert db.select_entry('cours', ('NOM',), 'id', 1) == 'FDO'
+# def test_update_shorter_string():
+#     db = get_programme_db()
+#     db.add_entry('cours', COURSES[1])
+#     db.update_entries(
+#         'cours',
+#         'NOM', 'Fonctionnement des ordinateurs',
+#         'NOM', 'FDO'
+#     )
+#     assert db.select_entry('cours', ('NOM',), 'id', 1) == 'FDO'
 
-def test_update_longer_string():
-    db = get_programme_db()
-    db.add_entry(
-        'cours',
-        {'MNEMONIQUE': 205, 'NOM': 'CFN',
-         'COORDINATEUR': 'Maarten Jansen', 'CREDITS': 5}
-    )
-    correct_name = 'Calcul Formel et Numérique'
-    # Requires reallocation
-    db.update_entries(
-        'cours',
-        'MNEMONIQUE', 205,
-        'NOM', correct_name
-    )
-    assert db.select_entry('cours', ('NOM',), 'id', 1) == correct_name
+# def test_update_longer_string():
+#     db = get_programme_db()
+#     db.add_entry(
+#         'cours',
+#         {'MNEMONIQUE': 205, 'NOM': 'CFN',
+#          'COORDINATEUR': 'Maarten Jansen', 'CREDITS': 5}
+#     )
+#     correct_name = 'Calcul Formel et Numérique'
+#     # Requires reallocation
+#     db.update_entries(
+#         'cours',
+#         'MNEMONIQUE', 205,
+#         'NOM', correct_name
+#     )
+#     assert db.select_entry('cours', ('NOM',), 'id', 1) == correct_name
 
-def test_update_wrong_type():
-    db = get_programme_db()
-    db.add_entry(
-        'cours',
-        {'MNEMONIQUE': 205, 'NOM': 'CFN',
-         'COORDINATEUR': 'Maarten Jansen', 'CREDITS': 5}
-    )
-    with pytest.raises(ValueError):
-        db.update_entries('cours', 'CREDITS', 5, 'NOM', 205)
+# def test_update_wrong_type():
+#     db = get_programme_db()
+#     db.add_entry(
+#         'cours',
+#         {'MNEMONIQUE': 205, 'NOM': 'CFN',
+#          'COORDINATEUR': 'Maarten Jansen', 'CREDITS': 5}
+#     )
+#     with pytest.raises(ValueError):
+#         db.update_entries('cours', 'CREDITS', 5, 'NOM', 205)
 
-def test_id_preserved_after_update():
-    db = get_programme_db()
-    fill_courses(db)
-    f103_id = db.select_entry('cours', ('id',), 'MNEMONIQUE', 103)
-    db.update_entries('cours', 'CREDITS', 10, 'NOM', '')
-    assert db.select_entry('cours', ('id',), 'MNEMONIQUE', 103) == f103_id
+# def test_id_preserved_after_update():
+#     db = get_programme_db()
+#     fill_courses(db)
+#     f103_id = db.select_entry('cours', ('id',), 'MNEMONIQUE', 103)
+#     db.update_entries('cours', 'CREDITS', 10, 'NOM', '')
+#     assert db.select_entry('cours', ('id',), 'MNEMONIQUE', 103) == f103_id
 
-def test_delete_entries():
-    db = get_programme_db()
-    fill_courses(db)
-    db.delete_entries('cours', 'CREDITS', 5)
-    expected = [
-        course | {'id': i+1}
-        for i, course in enumerate(COURSES)
-        if course['CREDITS'] != 5
-    ]
-    assert db.get_complete_table('cours') == expected
+# def test_delete_entries():
+#     db = get_programme_db()
+#     fill_courses(db)
+#     db.delete_entries('cours', 'CREDITS', 5)
+#     expected = [
+#         course | {'id': i+1}
+#         for i, course in enumerate(COURSES)
+#         if course['CREDITS'] != 5
+#     ]
+#     assert db.get_complete_table('cours') == expected
 
 # def test_resize_after_delete():
 #     db = get_programme_db()

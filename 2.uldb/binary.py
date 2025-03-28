@@ -1,5 +1,13 @@
 from typing import BinaryIO
+from enum import Enum
 
+class FieldType(Enum):
+    INTEGER = 1
+    STRING = 2
+
+TableSignature = list[tuple[str, FieldType]]
+Field = str | int
+Entry = dict[str, Field]
 
 class BinaryFile:
     def __init__(self, file: BinaryIO):
@@ -12,10 +20,14 @@ class BinaryFile:
     def current_pos(self) -> int:
         return self.__file.tell()
     
-    # def increment_int(self, n, size):
-    #     currentPos = self.__file.tell()
-    #     currentInt = self.read_integer(4)
-    #     self.write_integer_to(currentInt + n, size, currentPos)
+    def increment_int_from(self, n: int, size: int, pos: int):
+        currentInt = self.read_integer_from(4, pos)
+        if currentInt != -1: # Ignore unassigned int
+            newInt = currentInt + n
+            self.write_integer_to(newInt, size, pos)
+
+            return newInt
+        return currentInt
 
     def get_size(self) -> int:
         currentPos = self.current_pos
@@ -25,7 +37,10 @@ class BinaryFile:
         return  fileSize
     
     def write_integer(self, n: int, size: int) -> int:
-        self.__file.write(n.to_bytes(size, byteorder='little', signed=True))
+        if n != None:
+            self.__file.write(n.to_bytes(size, byteorder='little', signed=True))
+        else:
+            self.__file.seek(self.current_pos + size)
 
     def write_integer_to(self, n: int, size: int, pos: int) -> int:
         self.goto(pos)
@@ -47,10 +62,6 @@ class BinaryFile:
         self.goto(pos)
         return self.read_integer(size)
     
-    # def read_integer_away(self, size: int, shift: int) -> int:
-    #     self.goto(self.current_pos + shift)
-    #     return self.read_integer(size)
-    
     def read_string(self) -> str:
         stringSize = self.read_integer(2)
         return self.__file.read(stringSize).decode('utf-8')
@@ -66,3 +77,37 @@ class BinaryFile:
         self.goto(pos)
         self.__file.write(b'\x00' * size)
         self.__file.write(data)
+
+    def write_fields(self, db, table_name, strings_pointer, entry):
+        for field in db.get_table_signature(table_name):
+            fieldName = field[0]
+            fieldType = repr(field[1])
+
+            if fieldType == repr(FieldType.INTEGER):
+                self.write_integer(entry[fieldName], 4)
+            else:
+                stringPointer = strings_pointer.pop(0)
+                self.write_integer(stringPointer, 4)
+
+    def analyse_entry(self, entrySignature, entry_pointer):
+        entry = {}
+        self.goto(entry_pointer)
+
+        for field in entrySignature:
+            fieldName = field[0]
+            fieldType = repr(field[1])
+
+            if fieldType == repr(FieldType.INTEGER):
+                entry[fieldName] = self.read_integer(4)
+            else:
+                stringPointer = self.read_integer(4)
+                currentPos = self.current_pos
+                entry[fieldName] = self.read_string_from(stringPointer)
+                self.goto(currentPos)
+        self.skip(4)
+        next_entry_pointer = self.read_integer(4)
+        return entry, next_entry_pointer
+            
+
+    def skip(self, dist):
+        self.goto(self.current_pos + dist)
