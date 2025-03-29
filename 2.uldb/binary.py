@@ -107,7 +107,6 @@ class BinaryFile:
         self.skip(4)
         next_entry_pointer = self.read_integer(4)
         return entry, next_entry_pointer
-            
 
     def skip(self, dist):
         self.goto(self.current_pos + dist)

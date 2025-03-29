@@ -316,42 +316,42 @@ def test_delete_entries():
     ]
     assert db.get_complete_table('cours') == expected
 
-# def test_resize_after_delete():
-#     db = get_programme_db()
-#     fill_courses(db)
-#     size = _get_table_size('programme/cours.table')
-#     db.delete_entries('cours', 'CREDITS', 5)
-#     assert _get_table_size('programme/cours.table') < size
+def test_resize_after_delete():
+    db = get_programme_db()
+    fill_courses(db)
+    size = _get_table_size('programme/cours.table')
+    db.delete_entries('cours', 'CREDITS', 5)
+    assert _get_table_size('programme/cours.table') < size
 
-# def _get_table_size(p: str) -> int:
-#     from binary import BinaryFile
-#     with open(p, 'rb') as f:
-#         return BinaryFile(f).get_size()
+def _get_table_size(p: str) -> int:
+    from binary import BinaryFile
+    with open(p, 'rb') as f:
+        return BinaryFile(f).get_size()
 
-# def test_insert_after_delete():
-#     from database import FieldType
-#     db = get_empty_db('test_db')
-#     db.create_table('table', ['a', FieldType.INTEGER])
-#     for i in range(10):
-#         db.add_entry('table', {'a': i})
-#     db.delete_entries('table', 'a', 5)
-#     size = _get_table_size('test_db/table.table')
-#     db.add_entry('table', {'a': 5})
-#     assert _get_table_size('test_db/table.table') == size
+def test_insert_after_delete():
+    from database import FieldType
+    db = get_empty_db('test_db')
+    db.create_table('table', ['a', FieldType.INTEGER])
+    for i in range(10):
+        db.add_entry('table', {'a': i})
+    db.delete_entries('table', 'a', 5)
+    size = _get_table_size('test_db/table.table')
+    db.add_entry('table', {'a': 5})
+    assert _get_table_size('test_db/table.table') == size
 
-# def test_size_after_delete():
-#     db = get_programme_db()
-#     fill_courses(db)
-#     db.delete_entries('cours', 'CREDITS', 5)
-#     assert db.get_table_size('cours') == len([
-#         course for course in COURSES if course['CREDITS'] != 5
-#     ])
+def test_size_after_delete():
+    db = get_programme_db()
+    fill_courses(db)
+    db.delete_entries('cours', 'CREDITS', 5)
+    assert db.get_table_size('cours') == len([
+        course for course in COURSES if course['CREDITS'] != 5
+    ])
 
-# def test_delete_wrong_type():
-#     db = get_programme_db()
-#     fill_courses(db)
-#     with pytest.raises(ValueError):
-#         db.delete_entries('cours', 'CREDITS', 'Programmation')
+def test_delete_wrong_type():
+    db = get_programme_db()
+    fill_courses(db)
+    with pytest.raises(ValueError):
+        db.delete_entries('cours', 'CREDITS', 'Programmation')
 
 ########################################
 #               Partie 5               #
