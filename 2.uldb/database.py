@@ -13,21 +13,21 @@ Entry = dict[str, Field]
 class Database:
     def __init__(self, name: str):
         self.name = name # Initialize name 
-        makedirs(name, exist_ok=True) # Create database directory and not raise error if the directory already exist
+        makedirs(name, exist_ok=True) # Create database directory and do not raise an error if the directory already exists
 
     def size_of_int(self, nb_int):
         return nb_int * 4
 
     def list_tables(self) -> list[str]:
         '''
-        List of all file name on the database directory without the extentions
+        List all file names in the database directory without the extensions.
         '''
 
         return [file_name.split('.')[0] for file_name in listdir(self.name)]
 
     def open_table(self, table_name, method):
         '''
-        Open table file if the file exist and or if we want to create a new file
+        Open the table file if it exists, or create a new one if requested.
         '''
 
         if table_name in self.list_tables() or method == 'x':
@@ -41,16 +41,16 @@ class Database:
             
     def create_table(self, table_name: str, *fields: TableSignature) -> None:
         '''
-        Create a empty table file with all defaults header / pointer
+        Create an empty table file with default headers and pointers.
         '''
 
         pointer_size = self.size_of_int(1) # For readability
         table_file = self.open_table(table_name, 'x')
         
         table_file.write_integer(int(0x42444C55), 4)  # Write magic constant (ULDB in ASCII)
-        table_file.write_integer(len(fields), 4) # Write number of column 
+        table_file.write_integer(len(fields), 4) # Write number of fields
 
-        for field in fields: # Initialize for each column 
+        for field in fields: # Initialize each column
             table_file.write_integer(field[1].value, 1) # Field type
             table_file.write_string(field[0]) # Field name
 
@@ -61,27 +61,27 @@ class Database:
         table_file.write_integer(file_size + pointer_size * 3, pointer_size) # Initialize next usable space pointer
         table_file.write_integer(file_size + pointer_size * 3 + size_string_buffer, pointer_size) # Initialize pointer to entry buffer header
 
-        table_file.write_integer(0, size_string_buffer) # Allocate string buffer
+        table_file.write_integer(0, size_string_buffer) # Allocate space for the string buffer
 
         table_file.write_integer(0, pointer_size) # Initialize last used ID (0 as default)
-        table_file.write_integer(0, pointer_size) # Initialize number of entry (0 as default)
+        table_file.write_integer(0, pointer_size) # Initialize number of entries (0 as default)
         table_file.write_integer(-1, pointer_size) # Initialize pointer to the first entry (-1 as default)
         table_file.write_integer(-1, pointer_size) # Initialize pointer to the first entry (-1 as default)
         table_file.write_integer(-1, pointer_size) # Initialize pointer to the first 
 
     def delete_table(self, table_name: str) -> None:
         '''
-        Delete table file if it exist
+        Delete the table file if it exists.
         '''
 
-        try: # Try to delets file 
+        try: # Try to delete the file
             remove(self.name + '/' + table_name + '.table')
-        except: # If it doesn't work, that means it doesn't existe
+        except: # If it doesn't work, that means it doesn't exist
             raise ValueError
         
     def get_string_header_pointer(self, table_file: BinaryFile):
         '''
-        Get the header pointer of the string buffer to get pointers
+        Get the header pointer of the string buffer to retrieve pointers.
         '''
         n_field = table_file.read_integer_from(self.size_of_int(1), 4)
 
@@ -93,7 +93,7 @@ class Database:
     
     def get_pointer(self, table_file: BinaryFile, pointers_name: str | list[str]):
         '''
-        Powerfull fonction that can give any pointer of the database
+        Powerful function that can retrieve any pointer in the database.
         '''
         
         # Get headers pointers
@@ -121,7 +121,7 @@ class Database:
         
     def get(self, table_file: BinaryFile, pointers_name: str | list[str]):
         '''
-        Get directly what the pointer is pointing
+        Get the value directly from the pointer.
         '''
         pointers = self.get_pointer(table_file, pointers_name)
 
@@ -133,8 +133,8 @@ class Database:
     
     def get_table_signature(self, table_name: str) -> TableSignature:
         '''
-        Get liste of all field that composing an entry
-        '''      
+        Get a list of all fields composing an entry.
+        '''
         table_file = self.open_table(table_name, 'r')
         
         table_signature = []
@@ -150,14 +150,14 @@ class Database:
     
     def scan_strings_entry(self, entry: Entry) -> int:
         '''
-        Return the space that this entry'll take on the string buffer and a liste of all strings to add
+        Return the space this entry will take in the string buffer and a list of all strings to add.
         '''
         string_space = 0
         strings = []
 
         for info in entry:
             if isinstance(entry[info], str):
-                string_space += len(entry[info]) + 2
+                string_space += len(entry[info].encode("utf-8")) + 2 # Get the size this string will take in the file
                 strings.append(entry[info])
 
         return string_space, strings
@@ -165,27 +165,27 @@ class Database:
     def get_string_buffer_shift(self, table_file: BinaryFile, space: int):
         '''
         If the new entry didn't fit in the string buffer, 
-        get the shift for make it fit and to make the string buffer space still a power of 2
+        calculate the shift to make it fit and keep the string buffer size a power of 2.
         '''
         string_buffer_pointer, free_space_string_buffer_pointer, entry_buffer_pointer = self.get(table_file, ['first_string', 'free_string_space', 'entry_buffer'])
 
         # Calculate spaces
-        stringBufferSpace = entry_buffer_pointer - string_buffer_pointer
-        stringBufferUsedSpace = free_space_string_buffer_pointer - string_buffer_pointer
+        string_buffer_space = entry_buffer_pointer - string_buffer_pointer
+        string_buffer_used_space = free_space_string_buffer_pointer - string_buffer_pointer
 
-        # Aprox by power of 2 the new sting buffer space
-        new_string_buffer_space = stringBufferSpace
+        # Approximate the new string buffer space to the next power of 2
+        new_string_buffer_space = string_buffer_space
 
-        while new_string_buffer_space < stringBufferUsedSpace + space:
+        while new_string_buffer_space < string_buffer_used_space + space:
             new_string_buffer_space *= 2
 
         # Calculate the shift 
-        shift = new_string_buffer_space - stringBufferSpace
+        shift = new_string_buffer_space - string_buffer_space
         return shift
      
     def upgrade_string_buffer(self, table_file: BinaryFile, shift):
         '''
-        Upgrade the string buffer and apply shift to all pointer
+        Upgrade the string buffer and apply the shift to all pointers
         '''
         free_space_string_buffer_pointerPointer, entry_buffer_pointer  = self.get_pointer(table_file, ['free_string_space', 'entry_buffer'])
         free_space_string_buffer_pointer = table_file.read_integer_from(self.size_of_int(1), free_space_string_buffer_pointerPointer)
@@ -232,7 +232,7 @@ class Database:
 
     def insert_strings(self, table_file: BinaryFile, entry_string: list[str], string_space) -> list[int]:
         '''
-        Insert string to the string buffer and return a liste of pointer of all strings
+        Insert strings into the string buffer and return a list of pointers to all strings.
         '''
         free_string_space_pointer = self.get(table_file, 'free_string_space')
         strings_pointer = []
@@ -252,7 +252,7 @@ class Database:
     
     def set_new_entry_pointer(self, table_file: BinaryFile, field_signature):
         '''
-        Get all entry pointer and set the entry buffer to add a new entry
+        Get all entry pointers and set the entry buffer to add a new entry.
         '''
         last_entry_pointer, first_deleted_entry_pointer = self.get(table_file, ['last_entry', 'first_deleted_entry'])
         last_entry_pointer_offset =self.size_of_int(len(field_signature))
@@ -321,7 +321,7 @@ class Database:
     
     def add_entry(self, table_name: str, entry: Entry) -> None:
         '''
-        Add the given entry to the database
+        Add the specified entry to the database.
         '''
 
         table_file = self.open_table(table_name, 'r')
@@ -344,7 +344,7 @@ class Database:
 
     def get_table_size(self, table_name: str) -> int:
         '''
-        Get the number of entry in the database
+        Get the number of entries in the database.
         '''
 
         table_file = self.open_table(table_name, 'r')
@@ -352,7 +352,7 @@ class Database:
 
     def get_complete_table(self, table_name: str) -> list[Entry]:
         '''
-        Get a list of all entry 
+        Get a list of all entries.
         '''
 
         table_file = self.open_table(table_name, 'r')
@@ -361,7 +361,7 @@ class Database:
         field_signature = [('id', FieldType.INTEGER)] + self.get_table_signature(table_name)
         entry_pointer = self.get(table_file, 'first_entry')
 
-        # Browse all entry in the chain untild the end
+            # Browse all entries in the chain until the end
         while entry_pointer > 0:
             entry, entry_pointer = table_file.analyse_entry(field_signature, entry_pointer)
             complete_table.append(entry)
@@ -370,7 +370,7 @@ class Database:
     
     def get_field_offset(self, field_signature, field_name, shallBeList = False):
         '''
-        Get offset of given field to get value on entry
+        Get the offset of the given field to retrieve its value from an entry.
         '''
         field_offset = []
 
@@ -385,7 +385,7 @@ class Database:
             
     def read_field(self, table_file: BinaryFile, entry_pointer, field_infos):
         '''
-        Read field from entry depend of if it's int type or a char
+        Read a field from an entry depending on whether it's an integer or a string.
         '''
         field_offset, field_type = field_infos
         
@@ -399,7 +399,7 @@ class Database:
             
     def for_entry(self, table_name, field_name, field_value, action, select_fields = None):
         '''
-        Exec a function on the selected entry and return the res
+        Execute a function on the selected entry and return the result.
         '''
         table_file = self.open_table(table_name, 'r')
         field_signature = [('id', FieldType.INTEGER)] + self.get_table_signature(table_name)
@@ -426,7 +426,7 @@ class Database:
     
     def for_entries(self, table_name, field_name, field_value, action, select_fields = None):
         '''
-        Exec a function on all selected entries and return the res and an action status
+        Execute a function on all selected entries and return the results and an action status.
         '''
         action_list = []
         action_status = False
@@ -442,11 +442,13 @@ class Database:
 
         entry_pointer = self.get(table_file, 'first_entry')
 
-        while entry_pointer > 0:
+        # Browse all entry
+        while entry_pointer > 0: 
+            # If field match exec the function
             next_entry_pointer = table_file.read_integer_from(self.size_of_int(1), entry_pointer + next_entry_pointer_offset)
             field = self.read_field(table_file, entry_pointer, field_info)
 
-            if type(field) == type(field_value):
+            if type(field) == type(field_value): 
                 if field == field_value:
                     action_list.append(action(table_file, field_signature, entry_pointer))
                     action_status = True
@@ -459,7 +461,7 @@ class Database:
     
     def read_entry(self, table_file: BinaryFile, field_signature, entry_pointer):
         '''
-        Reader all field of an entry
+        Read all fields of an entry.
         '''
         entry = {}
         table_file.goto(entry_pointer)
@@ -481,20 +483,20 @@ class Database:
 
     def get_entry(self, table_name: str, field_name: str, field_value: Field) -> Entry | None:
         '''
-        Get all fields of an entry based on some properties 
+        Get all fields of an entry based on specific properties.
         '''
         return self.for_entry(table_name, field_name, field_value, self.read_entry)
     
     def get_entries(self, table_name: str, field_name: str, field_value: Field) -> list[Entry]:
         '''
-        Get all fields of all entry based on some properties 
+        Get all fields of all entries based on specific properties.
         '''
         action_list, _ = self.for_entries(table_name, field_name, field_value, self.read_entry)
         return action_list
     
     def read_selection(self, table_file: BinaryFile, selection, entry_pointer):
         '''
-        Reader selected fields of an entry based
+        Read selected fields of an entry.
         '''
         fields = []
 
@@ -514,13 +516,24 @@ class Database:
             return tuple(fields)
     
     def select_entry(self, table_name: str, fields: tuple[str], field_name: str, field_value: Field) -> Field | tuple[Field]:
-        return self.for_entry(table_name, field_name, field_value, self.read_selection, fields)
+        '''
+        Get specific fields of an entry based on given properties.
+        '''
+        return self.for_entry(table_name, field_name, field_value, self.read_selection, select_fields = fields)
     
     def select_entries(self, table: str, fields: tuple[str], field_name: str, field_value: Field) -> list[Field | tuple[Field]]:
-        action_list, _ =  self.for_entries(table, field_name, field_value, self.read_selection, fields)
+        '''
+        Get specific fields of all entries based on given properties.
+        '''
+        action_list, _ =  self.for_entries(table, field_name, field_value, self.read_selection, select_fields = fields)
         return action_list
     
     def update_entries(self, table_str: str, cond_name: str, cond_value: Field, update_name: str, update_value: Field) -> bool:
+        '''
+        Update all entries that meet the given condition with the specified update information.
+ 
+        Note: for readability reasons, for_entries() is rewritten within this function.
+        '''
         update_status = False
 
         table_file = self.open_table(table_str, 'r')
@@ -533,6 +546,7 @@ class Database:
 
         entry_pointer = self.get(table_file, 'first_entry')
 
+        # Browse all entry 
         while entry_pointer > 0:
             field = self.read_field(table_file, entry_pointer, field_info)
 
@@ -572,9 +586,15 @@ class Database:
         return update_status
     
     def unlist_entry(self, table_file: BinaryFile, pointer_offset, entry_pointers):
+        '''
+        Edit list pointers to remove an entry from the entry list.
+        '''
+
+        # Get current entry pointers
         last_entry_pointer = table_file.read_integer_from(self.size_of_int(1), entry_pointers["last_entry"])
         next_entry_pointer = table_file.read_integer_from(self.size_of_int(1), entry_pointers["next_entry"])
 
+        # Check if it's a first or last entry and if we need to edit pointer next to this entry or modify the header
         if last_entry_pointer > 0:
             last_entry_next_entry_pointer = last_entry_pointer + pointer_offset["next_entry"]
         else:
@@ -585,13 +605,18 @@ class Database:
         else:
             next_entry_last_entry_pointer = self.get_pointer(table_file, 'last_entry')
 
+        # Edit pointer
         table_file.write_integer_to(next_entry_pointer, self.size_of_int(1), last_entry_next_entry_pointer)
         table_file.write_integer_to(last_entry_pointer, self.size_of_int(1), next_entry_last_entry_pointer)
 
+        # Decrement the nb of entry 
         nb_entry_pointer = self.get_pointer(table_file, 'nb_entry')
         table_file.increment_int_from(-1, self.size_of_int(1), nb_entry_pointer)
 
     def list_to_delet_entry(self, table_file: BinaryFile, entry_pointer, pointer_offset, entry_pointers):
+        '''
+        Edit list pointers to remove and add the entry to the deleted entry list.
+        '''
         first_deleted_entry_pointer = self.get_pointer(table_file, 'first_deleted_entry')
         next_deleted_entry = table_file.read_integer_from(self.size_of_int(1), first_deleted_entry_pointer)
 
@@ -604,16 +629,22 @@ class Database:
             next_deleted_entry_last_entry_pointer = next_deleted_entry + pointer_offset["last_entry"]
             table_file.write_integer_to(entry_pointer, self.size_of_int(1), next_deleted_entry_last_entry_pointer)
 
-    def erase_deleted_entry(self, table_file, table_name):
+    def erase_deleted_entry(self, table_name):
+        '''
+        Reinsert all entries into a new table to delete all previously deleted entries.
+        '''
         table_signature = self.get_table_signature(table_name)
-        allEntry = [entry for entry in self.get_complete_table(table_name)]
-        
+        all_entry = [entry for entry in self.get_complete_table(table_name)]
+
         self.delete_table(table_name)
         self.create_table(table_name, *table_signature)
-        for entry in allEntry:
+        for entry in all_entry:
             self.add_entry(table_name, entry)
 
     def delete_entry(self, table_file: BinaryFile, field_signature, entry_pointer):
+        '''
+        Calculate pointer offsets and entry pointers, then remove the entry from the entry list and add it to the deleted entry list.
+        '''
         pointer_offset = {}
         pointer_offset["last_entry"] = self.size_of_int(len(field_signature))
         pointer_offset["next_entry"] = pointer_offset["last_entry"] + self.size_of_int(1)
@@ -628,6 +659,9 @@ class Database:
 
 
     def delete_entries(self, table_name: str, field_name: str, field_value: Field) -> bool:
+        '''
+        Delete all entries that meet the condition and refactor the file if needed.
+        '''
         _, action_status = self.for_entries(table_name, field_name, field_value, self.delete_entry)
 
         table_file = self.open_table(table_name, 'r')
@@ -639,9 +673,14 @@ class Database:
         entry_size = self.size_of_int(len(self.get_table_signature(table_name)) + 3)
 
         nb_entry_rel = self.get(table_file, 'nb_entry')
-        nb_entry = entry_buffer_space // entry_size
 
-        if nb_entry // nb_entry_rel >= 2:
-            self.erase_deleted_entry(table_file, table_name)
+        if entry_size != 0:
+            nb_entry = entry_buffer_space // entry_size
+        else:
+            nb_entry = 0
+
+        if nb_entry_rel != 0:
+            if nb_entry // nb_entry_rel >= 2:
+                self.erase_deleted_entry(table_name)
 
         return action_status
