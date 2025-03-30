@@ -357,102 +357,102 @@ def test_delete_wrong_type():
 #               Partie 5               #
 ########################################
 
-# INPUTS = [
-#     '',
-#     '''open(programme)
-# ''',
-#     '''open(programme)
-# create_table(cours,MNEM=INTEGER,NOM=STRING,COORD=STRING,CRED=INTEGER)
-# list_tables()
-# ''',
-#     '''open(programme)
-# create_table(cours,MNEM=INTEGER,NOM=STRING,COORD=STRING,CRED=INTEGER)
-# delete_table(cours)
-# list_tables()
-# ''',
-#     '''open(programme)
-# create_table(cours,MNEM=INTEGER,NOM=STRING,COORD=STRING,CRED=INTEGER)
-# insert_to(cours,MNEM=101,NOM="Progra",CRED=10,COORD="T. Massart")
-# insert_to(cours,MNEM=102,NOM="FDO",CRED=5,COORD="G. Geeraerts")
-# insert_to(cours,MNEM=103,NOM="Algo I",CRED=10,COORD="O. Markowitch")
-# insert_to(cours,MNEM=105,NOM="LDP I",CRED=5,COORD="C. Petit")
-# insert_to(cours,MNEM=106,CRED=5,NOM="Projet I",COORD="G. Joret")
-# from_if_get(cours,CRED=5,MNEM)
-# ''',
-#     '''open(programme)
-# create_table(cours,MNEM=INTEGER,NOM=STRING,COORD=STRING,CRED=INTEGER)
-# insert_to(cours,MNEM=101,NOM="Progra",CRED=10,COORD="T. Massart")
-# insert_to(cours,MNEM=102,NOM="FDO",CRED=5,COORD="G. Geeraerts")
-# insert_to(cours,MNEM=103,NOM="Algo I",CRED=10,COORD="O. Markowitch")
-# insert_to(cours,MNEM=105,NOM="LDP I",CRED=5,COORD="C. Petit")
-# insert_to(cours,MNEM=106,CRED=5,NOM="Projet I",COORD="G. Joret")
-# from_if_get(cours,CRED=5,*)
-# ''',
-#     '''open(programme)
-# create_table(cours,MNEM=INTEGER,NOM=STRING,COORD=STRING,CRED=INTEGER)
-# insert_to(cours,MNEM=101,NOM="Progra",CRED=10,COORD="T. Massart")
-# insert_to(cours,MNEM=102,NOM="FDO",CRED=5,COORD="G. Geeraerts")
-# insert_to(cours,MNEM=103,NOM="Algo I",CRED=10,COORD="O. Markowitch")
-# insert_to(cours,MNEM=105,NOM="LDP I",CRED=5,COORD="C. Petit")
-# insert_to(cours,MNEM=106,CRED=5,NOM="Projet I",COORD="G. Joret")
-# from_delete_where(cours,MNEM=105)
-# from_if_get(cours,CRED=5,MNEM)
-# ''',
-#     '''open(programme)
-# create_table(cours,MNEM=INTEGER,NOM=STRING,COORD=STRING,CRED=INTEGER)
-# insert_to(cours,MNEM=101,NOM="Progra",CRED=10,COORD="T. Massart")
-# from_update_where(cours,id=1,CRED=0)
-# from_if_get(cours,CRED=0,MNEM)
-# '''
-# ]
+INPUTS = [
+    '',
+    '''open(programme)
+''',
+    '''open(programme)
+create_table(cours,MNEM=INTEGER,NOM=STRING,COORD=STRING,CRED=INTEGER)
+list_tables()
+''',
+    '''open(programme)
+create_table(cours,MNEM=INTEGER,NOM=STRING,COORD=STRING,CRED=INTEGER)
+delete_table(cours)
+list_tables()
+''',
+    '''open(programme)
+create_table(cours,MNEM=INTEGER,NOM=STRING,COORD=STRING,CRED=INTEGER)
+insert_to(cours,MNEM=101,NOM="Progra",CRED=10,COORD="T. Massart")
+insert_to(cours,MNEM=102,NOM="FDO",CRED=5,COORD="G. Geeraerts")
+insert_to(cours,MNEM=103,NOM="Algo I",CRED=10,COORD="O. Markowitch")
+insert_to(cours,MNEM=105,NOM="LDP I",CRED=5,COORD="C. Petit")
+insert_to(cours,MNEM=106,CRED=5,NOM="Projet I",COORD="G. Joret")
+from_if_get(cours,CRED=5,MNEM)
+''',
+    '''open(programme)
+create_table(cours,MNEM=INTEGER,NOM=STRING,COORD=STRING,CRED=INTEGER)
+insert_to(cours,MNEM=101,NOM="Progra",CRED=10,COORD="T. Massart")
+insert_to(cours,MNEM=102,NOM="FDO",CRED=5,COORD="G. Geeraerts")
+insert_to(cours,MNEM=103,NOM="Algo I",CRED=10,COORD="O. Markowitch")
+insert_to(cours,MNEM=105,NOM="LDP I",CRED=5,COORD="C. Petit")
+insert_to(cours,MNEM=106,CRED=5,NOM="Projet I",COORD="G. Joret")
+from_if_get(cours,CRED=5,*)
+''',
+    '''open(programme)
+create_table(cours,MNEM=INTEGER,NOM=STRING,COORD=STRING,CRED=INTEGER)
+insert_to(cours,MNEM=101,NOM="Progra",CRED=10,COORD="T. Massart")
+insert_to(cours,MNEM=102,NOM="FDO",CRED=5,COORD="G. Geeraerts")
+insert_to(cours,MNEM=103,NOM="Algo I",CRED=10,COORD="O. Markowitch")
+insert_to(cours,MNEM=105,NOM="LDP I",CRED=5,COORD="C. Petit")
+insert_to(cours,MNEM=106,CRED=5,NOM="Projet I",COORD="G. Joret")
+from_delete_where(cours,MNEM=105)
+from_if_get(cours,CRED=5,MNEM)
+''',
+    '''open(programme)
+create_table(cours,MNEM=INTEGER,NOM=STRING,COORD=STRING,CRED=INTEGER)
+insert_to(cours,MNEM=101,NOM="Progra",CRED=10,COORD="T. Massart")
+from_update_where(cours,id=1,CRED=0)
+from_if_get(cours,CRED=0,MNEM)
+'''
+]
 
-# INPUTS = [
-#     (data + 'quit') for data in INPUTS
-# ]
+INPUTS = [
+    (data + 'quit') for data in INPUTS
+]
 
-# OUTPUTS = [
-#     '',
-#     '',
-#     'cours',
-#     '',
-#     '102 105 106'.replace(' ', '\n'),
-#     '''(102, 'FDO', 'G. Geeraerts', 5)
-# (105, 'LDP I', 'C. Petit', 5)
-# (106, 'Projet I', 'G. Joret', 5)''',
-#     '102 106'.replace(' ', '\n'),
-#     '101',
-# ]
+OUTPUTS = [
+    '',
+    '',
+    'cours',
+    '',
+    '102 105 106'.replace(' ', '\n'),
+    '''(102, 'FDO', 'G. Geeraerts', 5)
+(105, 'LDP I', 'C. Petit', 5)
+(106, 'Projet I', 'G. Joret', 5)''',
+    '102 106'.replace(' ', '\n'),
+    '101',
+]
 
-# def test_script_interactive():
-#     from subprocess import Popen, PIPE
-#     for data, expected in zip(INPUTS, OUTPUTS):
-#         _ = get_empty_db('programme')
-#         with Popen(['python3', 'uldb.py'], stdin=PIPE, stdout=PIPE, text=True) as process:
-#             output, _ = process.communicate(data)
-#             assert process.poll() is not None
-#             output = output.replace('uldb:: ', '').strip()
-#             if output != expected:
-#                 print(f'Tested code:\n\n{data}\n\nExpected:\n{expected}\n\nbut got:\n{output}')
-#                 assert False
+def test_script_interactive():
+    from subprocess import Popen, PIPE
+    for data, expected in zip(INPUTS, OUTPUTS):
+        _ = get_empty_db('programme')
+        with Popen(['python3', 'uldb.py'], stdin=PIPE, stdout=PIPE, text=True) as process:
+            output, _ = process.communicate(data)
+            assert process.poll() is not None
+            output = output.replace('uldb:: ', '').strip()
+            if output != expected:
+                print(f'Tested code:\n\n{data}\n\nExpected:\n{expected}\n\nbut got:\n{output}')
+                assert False
 
-# def test_script_param():
-#     from subprocess import run
-#     expected = '''cours
-# 102
-# 105
-# 106
-# (2, 102)
-# (4, 105)
-# (5, 106)
-# (102, 'FDO', 'G. Geeraerts', 5)
-# (105, 'LDP I', 'C. Petit', 5)
-# (106, 'Projet I', 'G. Joret', 5)
-# 101
-# 103
-# 101
-# 101
-# 101'''
-#     _ = get_empty_db('programme')
-#     del _
-#     process = run(['python3', 'uldb.py', 'script.uldb'], check=True, capture_output=True, text=True)
-#     assert process.stdout.strip() == expected
+def test_script_param():
+    from subprocess import run
+    expected = '''cours
+102
+105
+106
+(2, 102)
+(4, 105)
+(5, 106)
+(102, 'FDO', 'G. Geeraerts', 5)
+(105, 'LDP I', 'C. Petit', 5)
+(106, 'Projet I', 'G. Joret', 5)
+101
+103
+101
+101
+101'''
+    _ = get_empty_db('programme')
+    del _
+    process = run(['python3', 'uldb.py', 'script.uldb'], check=True, capture_output=True, text=True)
+    assert process.stdout.strip() == expected

@@ -47,8 +47,8 @@ class Database:
         pointer_size = self.size_of_int(1) # For readability
         table_file = self.open_table(table_name, 'x')
         
-        table_file.write_integer(int(0x42444C55), 4)  # Write magic constant (ULDB in ASCII)
-        table_file.write_integer(len(fields), 4) # Write number of fields
+        table_file.write_integer(int(0x42444C55), self.size_of_int(1))  # Write magic constant (ULDB in ASCII)
+        table_file.write_integer(len(fields), self.size_of_int(1)) # Write number of fields
 
         for field in fields: # Initialize each column
             table_file.write_integer(field[1].value, 1) # Field type
@@ -200,7 +200,7 @@ class Database:
 
         # Shift all pointer of the header
         for pointer in pointers_to_shift:
-            table_file.increment_int_from(shift, 4, pointer)
+            table_file.increment_int_from(shift, self.size_of_int(1), pointer)
 
         # Get the offset of all entry pointer 
         last_entry_pointer_offset =  self.size_of_int(1 + len(self.get_table_signature(table_name)))
@@ -212,12 +212,12 @@ class Database:
         while entry_pointer > 0:
             table_file.increment_int_from(shift, self.size_of_int(1), entry_pointer + last_entry_pointer_offset)
             table_file.increment_int_from(shift, self.size_of_int(1), entry_pointer + next_entry_pointer_offset)
-            entry_pointer = table_file.read_integer_from(4, entry_pointer + next_entry_pointer_offset)
+            entry_pointer = table_file.read_integer_from(self.size_of_int(1), entry_pointer + next_entry_pointer_offset)
 
         while deleted_entry_pointer > 0:
             table_file.increment_int_from(shift, self.size_of_int(1), deleted_entry_pointer + last_entry_pointer_offset)
             table_file.increment_int_from(shift, self.size_of_int(1), deleted_entry_pointer + next_entry_pointer_offset)
-            deleted_entry_pointer = table_file.read_integer_from(4, deleted_entry_pointer + next_entry_pointer_offset)
+            deleted_entry_pointer = table_file.read_integer_from(self.size_of_int(1), deleted_entry_pointer + next_entry_pointer_offset)
 
     def upgrade_db(self, table_file, table_name, space):
         '''
@@ -243,7 +243,7 @@ class Database:
             table_file.write_string(string)
 
         free_string_space_pointer_pointer = self.get_pointer(table_file, 'free_string_space')
-        table_file.increment_int_from(string_space, 4, free_string_space_pointer_pointer)
+        table_file.increment_int_from(string_space, self.size_of_int(1), free_string_space_pointer_pointer)
 
         if len(strings_pointer) == 1:
             return strings_pointer[0]
@@ -319,6 +319,23 @@ class Database:
         new_id = self.get(table_file, 'last_id')
         return new_id
     
+    def write_entry(self, table_file:BinaryFile, table_name, strings_pointer, entry):
+        '''
+        Write an entry to the entry buffer
+        '''
+        for field in self.get_table_signature(table_name):
+            fieldName = field[0]
+            fieldType = field[1]
+
+            # Depend of the field type
+            if fieldType == FieldType.INTEGER:
+                # Only write the int
+                table_file.write_integer(entry[fieldName], 4)
+            else:
+                # Write the pointer to the string on the string buffer
+                stringPointer = strings_pointer.pop(0)
+                table_file.write_integer(stringPointer, 4)
+    
     def add_entry(self, table_name: str, entry: Entry) -> None:
         '''
         Add the specified entry to the database.
@@ -338,7 +355,7 @@ class Database:
 
         # Add entry to entry pointer
         table_file.write_integer_to(entry_id, self.size_of_int(1), entry_pointer)
-        table_file.write_fields(self, table_name, strings_pointer, entry)
+        self.write_entry(table_file, table_name, strings_pointer, entry)
         table_file.write_integer(last_entry_pointer, self.size_of_int(1))
         table_file.write_integer(next_entry_pointer, self.size_of_int(1))
 
@@ -349,6 +366,37 @@ class Database:
 
         table_file = self.open_table(table_name, 'r')
         return self.get(table_file, 'nb_entry')
+
+    def analyse_entry(self, table_file: BinaryFile, entrySignature, entry_pointer):
+        '''
+        Read an entry and parse it into a dict
+        '''
+        entry = {}
+        table_file.goto(entry_pointer)
+
+        # Read all field one by one
+        for field in entrySignature:
+            fieldName = field[0]
+            fieldType = field[1]
+
+            # Read field depend of the type
+            if fieldType == FieldType.INTEGER: 
+                # Only read the int
+                entry[fieldName] = table_file.read_integer(4) 
+            else: 
+                # Only read the string on the string buffer
+                stringPointer = table_file.read_integer(4)
+                currentPos = table_file.current_pos
+                entry[fieldName] = table_file.read_string_from(stringPointer)
+                table_file.goto(currentPos)
+
+        # Skip last entry pointer
+        table_file.read_integer(self.size_of_int(1))
+
+        # Read next entry pointer
+        next_entry_pointer = table_file.read_integer(4)
+
+        return entry, next_entry_pointer
 
     def get_complete_table(self, table_name: str) -> list[Entry]:
         '''
@@ -363,7 +411,7 @@ class Database:
 
             # Browse all entries in the chain until the end
         while entry_pointer > 0:
-            entry, entry_pointer = table_file.analyse_entry(field_signature, entry_pointer)
+            entry, entry_pointer = self.analyse_entry(table_file, field_signature, entry_pointer)
             complete_table.append(entry)
         
         return complete_table
@@ -471,9 +519,9 @@ class Database:
             fieldType = repr(field[1])
 
             if fieldType == repr(FieldType.INTEGER):
-                entry[fieldName] = table_file.read_integer(4)
+                entry[fieldName] = table_file.read_integer(self.size_of_int(1))
             else:
-                string_pointer = table_file.read_integer(4)
+                string_pointer = table_file.read_integer(self.size_of_int(1))
                 current_field_pointer = table_file.current_pos
                 entry[fieldName] = table_file.read_string_from(string_pointer)
                 table_file.goto(current_field_pointer)
@@ -674,6 +722,7 @@ class Database:
 
         nb_entry_rel = self.get(table_file, 'nb_entry')
 
+        # Avoid divising by 0 to calcule the ratio entry / deleted entry
         if entry_size != 0:
             nb_entry = entry_buffer_space // entry_size
         else:
