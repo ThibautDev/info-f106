@@ -1,0 +1,5 @@
+**/__pycache__/
+**/.pytest_cache/
+
+2.uldb/programme
+2.uldb/test_db
